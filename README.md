@@ -1,15 +1,20 @@
 ## v1 - basic functionality
 `/azurebot server list`
+
 `/azurebot server start <name> <timespan>`
+
 `/azurebot server stop <name>`
 
 ## v2 - custom server images with steamcmd
 `/azurebot server new <name> <game> <region> <allowed-role>`
+
 `/azurebot server delete <name>`
+
 `/azurebot server info <name>`
 
 ## v3 - permissions
 `/azurebot server edit <name> <option-key> <option-value>` (different servers allow changing different config options)
+
 `/azurebot server login <name>` (sends login information to the user if they have permission)
 
 ## v4 - agent
