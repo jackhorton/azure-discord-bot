@@ -1,0 +1,308 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "sqlServerPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "The admin password for the main sql server resource"
+      }
+    },
+    "vmPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "The admin password for the main bot VM"
+      }
+    }
+  },
+  "variables": {
+    "unique": "[uniquestring(resourceGroup().id, subscription().id)]",
+    "storageAccountName": "[concat('azurebot', variables('unique'))]",
+    "applicationInsightsName": "azurebot-insights",
+    "workspaceName": "azurebot-workspace",
+    "keyVaultName": "[concat('azurebot-kv', variables('unique'))]",
+    "sqlServerPasswordName": "SqlServerPassword",
+    "sqlServerName": "[concat('azurebot-sql', variables('unique'))]",
+    "sqlServerUsername": "azurebot",
+    "sqlDatabaseName": "azurebot-db",
+    "networkInterfaceName": "azurebot-bot-nic",
+    "networkSecurityGroupName": "azurebot-bot-nsg",
+    "virtualNetworkName": "azurebot-bot-vnet",
+    "publicIpAddressName": "azurebot-bot-ip",
+    "subnetName": "azurebot-bot-subnet",
+    "subnetAddressPrefix": "10.1.0.0/24",
+    "addressPrefix": "10.1.0.0/16",
+    "dnsLabelPrefix": "[concat('azurebot', variables('unique'))]",
+    "vmName": "azurebot-bot-vm",
+    "vmDiskName": "azurebot-bot-vm-disk",
+    "vmUsername": "azurebot",
+    "vmPasswordName": "VmPassword"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "apiVersion": "2019-06-01",
+      "name": "[variables('storageAccountName')]",
+      "location": "[resourceGroup().location]",
+      "sku": {
+        "name": "Standard_LRS"
+      },
+      "kind": "StorageV2",
+      "properties": {}
+    },
+    {
+      "type": "Microsoft.Insights/components",
+      "apiVersion": "2020-02-02-preview",
+      "name": "[variables('applicationInsightsName')]",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[variables('workspaceName')]"
+      ],
+      "tags": {
+        "[concat('hidden-link:', resourceId('Microsoft.Web/sites', variables('applicationInsightsName')))]": "Resource"
+      },
+      "properties": {
+        "Application_Type": "web",
+        "ApplicationId": "[variables('applicationInsightsName')]",
+        "Request_Source": "rest",
+        "WorkspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', variables('workspaceName'))]"
+      }
+    },
+    {
+      "type": "Microsoft.OperationalInsights/workspaces",
+      "apiVersion": "2020-03-01-preview",
+      "name": "[variables('workspaceName')]",
+      "location": "[resourceGroup().location]",
+      "properties": {}
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults",
+      "apiVersion": "2019-09-01",
+      "name": "[variables('keyVaultName')]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "sku": {
+          "family": "A",
+          "name": "standard"
+        },
+        "tenantId": "[subscription().tenantId]",
+        "enableRbacAuthorization": true,
+        "enabledForTemplateDeployment": true,
+        "enableSoftDelete": true
+      }
+    },
+    {
+      "name": "[concat(variables('keyVaultName'), '/', variables('sqlServerPasswordName'))]",
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2019-09-01",
+      "properties": {
+        "value": "[parameters('sqlServerPassword')]",
+        "contentType": "Administrator password for Azure SQL Server"
+      }
+    },
+    {
+      "name": "[concat(variables('keyVaultName'), '/', variables('vmPasswordName'))]",
+      "type": "Microsoft.KeyVault/vaults/secrets",
+      "apiVersion": "2019-09-01",
+      "properties": {
+        "value": "[parameters('vmPassword')]",
+        "contentType": "Administrator password for the bot VM"
+      }
+    },
+    {
+      "name": "[variables('sqlServerName')]",
+      "type": "Microsoft.Sql/servers",
+      "apiVersion": "2019-06-01-preview",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "administratorLogin": "[variables('sqlServerUsername')]",
+        "administratorLoginPassword": "[parameters('sqlServerPassword')]"
+      }
+    },
+    {
+      "type": "Microsoft.Sql/servers/firewallRules",
+      "apiVersion": "2015-05-01-preview",
+      "dependsOn": [
+        "[resourceId('Microsoft.Sql/servers', variables('sqlServerName'))]"
+      ],
+      "location": "[resourceGroup().location]",
+      "name": "[concat(variables('sqlServerName'), '/AllowAllWindowsAzureIps')]",
+      "properties": {
+        "startIpAddress": "0.0.0.0",
+        "endIpAddress": "0.0.0.0"
+      }
+    },
+    {
+      "name": "[concat(variables('sqlServerName'), '/', variables('sqlDatabaseName'))]",
+      "type": "Microsoft.Sql/servers/databases",
+      "apiVersion": "2020-08-01-preview",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Sql/servers', variables('sqlServerName'))]"
+      ],
+      "properties": {
+        "collation": "SQL_Latin1_General_CP1_CI_AS",
+        "edition": "Basic",
+        "maxSizeBytes": 1073741824,
+        "autoPauseDelay": 60
+      },
+      "sku": {
+        "name": "GP_S_Gen5_1",
+        "tier": "GeneralPurpose"
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkInterfaces",
+      "apiVersion": "2020-06-01",
+      "name": "[variables('networkInterfaceName')]",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkSecurityGroups/', variables('networkSecurityGroupName'))]",
+        "[resourceId('Microsoft.Network/virtualNetworks/', variables('virtualNetworkName'))]",
+        "[resourceId('Microsoft.Network/publicIpAddresses/', variables('publicIpAddressName'))]"
+      ],
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "subnet": {
+                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('virtualNetworkName'), variables('subnetName'))]"
+              },
+              "privateIPAllocationMethod": "Dynamic",
+              "publicIpAddress": {
+                "id": "[resourceId('Microsoft.Network/publicIPAddresses', variables('publicIPAddressName'))]"
+              }
+            }
+          }
+        ],
+        "networkSecurityGroup": {
+          "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('networkSecurityGroupName'))]"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.Network/networkSecurityGroups",
+      "apiVersion": "2020-06-01",
+      "name": "[variables('networkSecurityGroupName')]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "securityRules": [
+          {
+            "name": "SSH",
+            "properties": {
+              "priority": 1000,
+              "protocol": "TCP",
+              "access": "Allow",
+              "direction": "Inbound",
+              "sourceAddressPrefix": "*",
+              "sourcePortRange": "*",
+              "destinationAddressPrefix": "*",
+              "destinationPortRange": "22"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/virtualNetworks",
+      "apiVersion": "2020-06-01",
+      "name": "[variables('virtualNetworkName')]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "[variables('addressPrefix')]"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "[variables('subnetName')]",
+            "properties": {
+              "addressPrefix": "[variables('subnetAddressPrefix')]",
+              "privateEndpointNetworkPolicies": "Enabled",
+              "privateLinkServiceNetworkPolicies": "Enabled"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Network/publicIpAddresses",
+      "apiVersion": "2020-06-01",
+      "name": "[variables('publicIpAddressName')]",
+      "location": "[resourceGroup().location]",
+      "sku": {
+        "name": "Basic",
+        "tier": "Regional"
+      },
+      "properties": {
+        "publicIpAllocationMethod": "Dynamic",
+        "publicIPAddressVersion": "IPv4",
+        "dnsSettings": {
+          "domainNameLabel": "[variables('dnsLabelPrefix')]"
+        },
+        "idleTimeoutInMinutes": 4
+      }
+    },
+    {
+      "type": "Microsoft.Compute/virtualMachines",
+      "apiVersion": "2020-06-01",
+      "name": "[variables('vmName')]",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Network/networkInterfaces/', variables('networkInterfaceName'))]"
+      ],
+      "properties": {
+        "hardwareProfile": {
+          "vmSize": "Standard_B1s"
+        },
+        "storageProfile": {
+          "osDisk": {
+            "createOption": "fromImage",
+            "managedDisk": {
+              "storageAccountType": "Standard_LRS"
+            },
+            "name": "[variables('vmDiskName')]"
+          },
+          "imageReference": {
+            "publisher": "Canonical",
+            "offer": "0001-com-ubuntu-server-focal",
+            "sku": "20_04-lts",
+            "version": "latest"
+          }
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', variables('networkInterfaceName'))]"
+            }
+          ]
+        },
+        "osProfile": {
+          "computerName": "[variables('vmName')]",
+          "adminUsername": "[variables('vmUsername')]",
+          "adminPassword": "[parameters('vmPassword')]"
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "storageAccountName": {
+      "type": "string",
+      "value": "[variables('storageAccountName')]"
+    },
+    "keyVaultId": {
+      "type": "string",
+      "value": "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]"
+    },
+    "sqlServerPasswordName": {
+      "type": "string",
+      "value": "[variables('sqlServerPasswordName')]"
+    },
+    "vmPasswordName": {
+      "type": "string",
+      "value": "[variables('vmPasswordName')]"
+    }
+  }
+}
