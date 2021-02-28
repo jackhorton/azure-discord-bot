@@ -13,11 +13,16 @@
       "metadata": {
         "description": "The admin password for the main bot VM"
       }
+    },
+    "botBackendExtensionFiles": {
+      "type": "array",
+      "defaultValue": []
     }
   },
   "variables": {
     "unique": "[uniquestring(resourceGroup().id, subscription().id)]",
     "storageAccountName": "[concat('azurebot', variables('unique'))]",
+    "deploymentContainerName": "deploy",
     "applicationInsightsName": "azurebot-insights",
     "workspaceName": "azurebot-workspace",
     "keyVaultName": "[concat('azurebot-kv', variables('unique'))]",
@@ -36,7 +41,10 @@
     "vmName": "azurebot-bot-vm",
     "vmDiskName": "azurebot-bot-vm-disk",
     "vmUsername": "azurebot",
-    "vmPasswordName": "VmPassword"
+    "vmPasswordName": "VmPassword",
+    "botBackendExtensionName": "DeployAzurebot",
+    "vmDeployContainerAccessName": "[guid(variables('vmName'), resourceGroup().name, variables('storageBlobDataReader'), variables('storageAccountName'), variables('deploymentContainerName'))]",
+    "storageBlobDataReader": "2a2b9908-6ea1-4ae2-8e65-a410df84e7d1"
   },
   "resources": [
     {
@@ -48,7 +56,30 @@
         "name": "Standard_LRS"
       },
       "kind": "StorageV2",
+      "properties": {
+        "allowBlobPublicAccess": false,
+        "supportsHttpsTrafficOnly": true
+      }
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices",
+      "apiVersion": "2019-06-01",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+      ],
+      "name": "[concat(variables('storageAccountName'), '/default')]",
       "properties": {}
+    },
+    {
+      "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+      "apiVersion": "2019-06-01",
+      "dependsOn": [
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices', variables('storageAccountName'), 'default')]"
+      ],
+      "name": "[concat(variables('storageAccountName'), '/default/', variables('deploymentContainerName'))]",
+      "properties": {
+        "publicAccess": "None"
+      }
     },
     {
       "type": "Microsoft.Insights/components",
@@ -283,6 +314,46 @@
           "computerName": "[variables('vmName')]",
           "adminUsername": "[variables('vmUsername')]",
           "adminPassword": "[parameters('vmPassword')]"
+        }
+      },
+      "identity": {
+        "type": "SystemAssigned"
+      }
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2020-04-01-preview",
+      "name": "[variables('vmDeployContainerAccessName')]",
+      "scope": "[concat('Microsoft.Storage/storageAccounts/', variables('storageAccountName'), '/blobServices/default/containers/', variables('deploymentContainerName'))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/virtualMachines', variables('vmName'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices/containers', variables('storageAccountName'), 'default', variables('deploymentContainerName'))]"
+      ],
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '2a2b9908-6ea1-4ae2-8e65-a410df84e7d1')]",
+        "principalId": "[reference(variables('vmName'), '2020-06-01', 'Full').identity.principalId]"
+      }
+    },
+    {
+      "name": "[concat(variables('vmName'), '/', variables('botBackendExtensionName'))]",
+      "type": "Microsoft.Compute/virtualMachines/extensions",
+      "apiVersion": "2019-07-01",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[variables('vmDeployContainerAccessName')]"
+      ],
+      "condition": "[not(empty(parameters('botBackendExtensionFiles')))]",
+      "properties": {
+        "publisher": "Microsoft.Azure.Extensions",
+        "type": "CustomScript",
+        "typeHandlerVersion": "2.1",
+        "autoUpgradeMinorVersion": true,
+        "settings": {
+          "fileUris": "[parameters('botBackendExtensionFiles')]",
+          "commandToExecute": "sh deploy-bot-backend.sh"
+        },
+        "protectedSettings": {
+          "managedIdentity": {}
         }
       }
     }

@@ -5,6 +5,7 @@ using Azure.ResourceManager.Resources;
 using Azure.ResourceManager.Resources.Models;
 using System;
 using System.Buffers;
+using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.IO;
@@ -18,6 +19,7 @@ namespace AzureBot.Deploy
     class Program
     {
         const string _deploymentName = "azurebot-deploy";
+        static readonly Dictionary<string, JsonElement> _deserializedOutputCache = new();
         static readonly TokenCredential _credentials = new VisualStudioCredential(new VisualStudioCredentialOptions { TenantId = "36f71bd6-cb64-4543-920f-d5ddad13fc2b" });
 
         static Task Main(string[] args)
@@ -58,6 +60,7 @@ namespace AzureBot.Deploy
             var deployment = await deploymentOperation.WaitForCompletionAsync();
 
             console.Out.Write($"Deployed resources successfully to {infraGroup}, updating application code in the storage account");
+            var deploymentOutput = DeserializeOutputs(deployment);
         }
 
         /// <summary>
@@ -133,7 +136,7 @@ namespace AzureBot.Deploy
         /// <returns><see langword="true"/> if the output is found, <see langword="false"/> if not. If the output is not found, <paramref name="value"/> will be set to the empty string.</returns>
         static bool TryGetStringOutput(DeploymentExtended deployment, string outputName, out string value)
         {
-            var outputs = JsonDocument.Parse(JsonSerializer.Serialize(deployment.Properties.Outputs)).RootElement;
+            var outputs = DeserializeOutputs(deployment);
             if (outputs.TryGetProperty(outputName, out var outputValue))
             {
                 value = outputValue.GetProperty("value").GetString() ?? throw new NullReferenceException();
@@ -142,6 +145,19 @@ namespace AzureBot.Deploy
 
             value = "";
             return false;
+        }
+
+        static JsonElement DeserializeOutputs(DeploymentExtended deployment)
+        {
+            var correlationId = deployment.Properties.CorrelationId;
+            if (_deserializedOutputCache.TryGetValue(correlationId, out var deserialized))
+            {
+                return deserialized;
+            }
+
+            var outputs = JsonDocument.Parse(JsonSerializer.Serialize(deployment.Properties.Outputs)).RootElement;
+            _deserializedOutputCache.Add(correlationId, outputs);
+            return outputs;
         }
     }
 }
