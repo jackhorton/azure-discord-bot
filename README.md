@@ -1,3 +1,5 @@
+# Roadmap
+
 ## v1 - basic functionality
 `/azurebot server list`
 
@@ -23,7 +25,7 @@
 
 
 
-
+## Proposed SQL Schema
 ### Servers
 Id, Name, ResourceId, Game, UserId, GuildId, CurrentState, CurrentSku
 
@@ -32,7 +34,7 @@ Id, ServerId, Timestamp, NewState, NewSku
 
 
 
-### Custom images
+## Custom images
 - create custom images using packer, stored in a shared image gallery
 - one image per game (FactorioImage and MinecraftImage will differ)
 - install the game server dont generate any worlds in the custom image
