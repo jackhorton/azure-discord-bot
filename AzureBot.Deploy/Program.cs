@@ -57,9 +57,7 @@ namespace AzureBot.Deploy
             var deploymentOperation = await client.Deployments.StartCreateOrUpdateAsync(infraGroup, _deploymentName, new Deployment(properties));
             var deployment = await deploymentOperation.WaitForCompletionAsync();
 
-            var outputs = JsonDocument.Parse(JsonSerializer.Serialize(deployment.Value.Properties.Outputs)).RootElement;
-            var storageAccountName = outputs.GetProperty("storageAccountName").GetProperty("value").GetString();
-            console.Out.Write($"Deployed resources successfully {storageAccountName}, migrating SQL");
+            console.Out.Write($"Deployed resources successfully to {infraGroup}, updating application code in the storage account");
         }
 
         /// <summary>
@@ -83,21 +81,24 @@ namespace AzureBot.Deploy
         /// <returns>An opaque object that can be serialized by <see cref="JsonSerializer"/></returns>
         static async Task<object> GeneratePasswordParameter(ResourcesManagementClient client, string resourceGroupName, string secretKeyOutputName)
         {
-            string? kvId = null;
-            string? secretName = null;
             try
             {
                 var deployment = await client.Deployments.GetAsync(resourceGroupName, _deploymentName);
-                var outputs = JsonDocument.Parse(JsonSerializer.Serialize(deployment.Value.Properties.Outputs)).RootElement;
                 if (deployment.Value.Properties.ProvisioningState == "Succeeded")
                 {
-                    if (outputs.TryGetProperty("keyVaultId", out var kvOutput))
+                    if (TryGetStringOutput(deployment, "keyVaultId", out var kvId) && TryGetStringOutput(deployment, secretKeyOutputName, out var secretName))
                     {
-                        kvId = kvOutput.GetProperty("value").GetString();
-                    }
-                    if (outputs.TryGetProperty(secretKeyOutputName, out var secretKeyOutput))
-                    {
-                        secretName = secretKeyOutput.GetProperty("value").GetString();
+                        return new
+                        {
+                            reference = new
+                            {
+                                keyVault = new
+                                {
+                                    id = kvId
+                                },
+                                secretName = secretName,
+                            }
+                        };
                     }
                 }
             }
@@ -106,23 +107,9 @@ namespace AzureBot.Deploy
                 // this is a new resource group -- thats ok
             }
 
-            return (kvId, secretName) switch
+            return new
             {
-                (string kv, string secret) when !string.IsNullOrEmpty(kv) && !string.IsNullOrEmpty(secret) => new
-                {
-                    reference = new
-                    {
-                        keyVault = new
-                        {
-                            id = kv
-                        },
-                        secretName = secret,
-                    }
-                },
-                _ => new
-                {
-                    value = GenerateNewPassword(),
-                },
+                value = GenerateNewPassword(),
             };
         }
 
@@ -138,6 +125,23 @@ namespace AzureBot.Deploy
             var password = Convert.ToBase64String(data);
             pool.Return(data);
             return password;
+        }
+
+        /// <summary>
+        /// Helper function to get a string output from a deployment.
+        /// </summary>
+        /// <returns><see langword="true"/> if the output is found, <see langword="false"/> if not. If the output is not found, <paramref name="value"/> will be set to the empty string.</returns>
+        static bool TryGetStringOutput(DeploymentExtended deployment, string outputName, out string value)
+        {
+            var outputs = JsonDocument.Parse(JsonSerializer.Serialize(deployment.Properties.Outputs)).RootElement;
+            if (outputs.TryGetProperty(outputName, out var outputValue))
+            {
+                value = outputValue.GetProperty("value").GetString() ?? throw new NullReferenceException();
+                return true;
+            }
+
+            value = "";
+            return false;
         }
     }
 }
