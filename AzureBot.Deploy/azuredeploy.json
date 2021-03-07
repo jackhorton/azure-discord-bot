@@ -2,10 +2,16 @@
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
-    "sqlServerPassword": {
+    "sqlPassword": {
       "type": "securestring",
       "metadata": {
-        "description": "The admin password for the main sql server resource"
+        "description": "The admin password for the SQL server resource"
+      }
+    },
+    "sqlPasswordSecretName": {
+      "type": "string",
+      "metadata": {
+        "description": "The name of the key vault secret to store the SQL server password in"
       }
     },
     "vmPassword": {
@@ -14,19 +20,35 @@
         "description": "The admin password for the main bot VM"
       }
     },
+    "vmPasswordSecretName": {
+      "type": "string",
+      "metadata": {
+        "description": "The name of the key vault secret to store the bot VM password in"
+      }
+    },
     "botBackendExtensionFiles": {
       "type": "array",
       "defaultValue": []
+    },
+    "deployContainerName": {
+      "type": "string",
+      "metadata": {
+        "description": "The name of the container used for deployment files"
+      }
+    },
+    "adminObjectId": {
+      "type": "string",
+      "metadata": {
+        "description": "The object ID of the user deploying the template to grant elevated privileges"
+      }
     }
   },
   "variables": {
     "unique": "[uniquestring(resourceGroup().id, subscription().id)]",
     "storageAccountName": "[concat('azurebot', variables('unique'))]",
-    "deploymentContainerName": "deploy",
     "applicationInsightsName": "azurebot-insights",
     "workspaceName": "azurebot-workspace",
     "keyVaultName": "[concat('azurebot-kv', variables('unique'))]",
-    "sqlServerPasswordName": "SqlServerPassword",
     "sqlServerName": "[concat('azurebot-sql', variables('unique'))]",
     "sqlServerUsername": "azurebot",
     "sqlDatabaseName": "azurebot-db",
@@ -41,10 +63,13 @@
     "vmName": "azurebot-bot-vm",
     "vmDiskName": "azurebot-bot-vm-disk",
     "vmUsername": "azurebot",
-    "vmPasswordName": "VmPassword",
     "botBackendExtensionName": "DeployAzurebot",
-    "vmDeployContainerAccessName": "[guid(variables('vmName'), resourceGroup().name, variables('storageBlobDataReader'), variables('storageAccountName'), variables('deploymentContainerName'))]",
-    "storageBlobDataReader": "2a2b9908-6ea1-4ae2-8e65-a410df84e7d1"
+    "vmDeployContainerAccessName": "[guid(variables('vmName'), resourceGroup().name, variables('storageBlobDataReader'), variables('storageAccountName'), parameters('deployContainerName'))]",
+    "storageBlobDataReader": "2a2b9908-6ea1-4ae2-8e65-a410df84e7d1",
+    "adminStorageAccountAccessName": "[guid(parameters('adminObjectId'), resourceGroup().name, variables('storageBlobDataContributor'), variables('storageAccountName'))]",
+    "storageBlobDataContributor": "ba92f5b4-2d11-453d-a403-e96b0029c9fe",
+    "adminKeyVaultAdministrator": "[guid(parameters('adminObjectId'), resourceGroup().name, variables('keyVaultAdministrator'), variables('keyVaultName'))]",
+    "keyVaultAdministrator": "00482a5a-887f-4fb3-b363-3b7fe8e74483"
   },
   "resources": [
     {
@@ -76,7 +101,7 @@
       "dependsOn": [
         "[resourceId('Microsoft.Storage/storageAccounts/blobServices', variables('storageAccountName'), 'default')]"
       ],
-      "name": "[concat(variables('storageAccountName'), '/default/', variables('deploymentContainerName'))]",
+      "name": "[concat(variables('storageAccountName'), '/default/', parameters('deployContainerName'))]",
       "properties": {
         "publicAccess": "None"
       }
@@ -89,9 +114,6 @@
       "dependsOn": [
         "[variables('workspaceName')]"
       ],
-      "tags": {
-        "[concat('hidden-link:', resourceId('Microsoft.Web/sites', variables('applicationInsightsName')))]": "Resource"
-      },
       "properties": {
         "Application_Type": "web",
         "ApplicationId": "[variables('applicationInsightsName')]",
@@ -123,16 +145,16 @@
       }
     },
     {
-      "name": "[concat(variables('keyVaultName'), '/', variables('sqlServerPasswordName'))]",
+      "name": "[concat(variables('keyVaultName'), '/', parameters('sqlPasswordSecretName'))]",
       "type": "Microsoft.KeyVault/vaults/secrets",
       "apiVersion": "2019-09-01",
       "properties": {
-        "value": "[parameters('sqlServerPassword')]",
+        "value": "[parameters('sqlPassword')]",
         "contentType": "Administrator password for Azure SQL Server"
       }
     },
     {
-      "name": "[concat(variables('keyVaultName'), '/', variables('vmPasswordName'))]",
+      "name": "[concat(variables('keyVaultName'), '/', parameters('vmPasswordSecretName'))]",
       "type": "Microsoft.KeyVault/vaults/secrets",
       "apiVersion": "2019-09-01",
       "properties": {
@@ -147,7 +169,7 @@
       "location": "[resourceGroup().location]",
       "properties": {
         "administratorLogin": "[variables('sqlServerUsername')]",
-        "administratorLoginPassword": "[parameters('sqlServerPassword')]"
+        "administratorLoginPassword": "[parameters('sqlPassword')]"
       }
     },
     {
@@ -230,6 +252,19 @@
               "sourcePortRange": "*",
               "destinationAddressPrefix": "*",
               "destinationPortRange": "22"
+            }
+          },
+          {
+            "name": "HTTP",
+            "properties": {
+              "priority": 1001,
+              "protocol": "TCP",
+              "access": "Allow",
+              "direction": "Inbound",
+              "sourceAddressPrefix": "*",
+              "sourcePortRange": "*",
+              "destinationAddressPrefix": "*",
+              "destinationPortRange": "80"
             }
           }
         ]
@@ -324,13 +359,13 @@
       "type": "Microsoft.Authorization/roleAssignments",
       "apiVersion": "2020-04-01-preview",
       "name": "[variables('vmDeployContainerAccessName')]",
-      "scope": "[concat('Microsoft.Storage/storageAccounts/', variables('storageAccountName'), '/blobServices/default/containers/', variables('deploymentContainerName'))]",
+      "scope": "[concat('Microsoft.Storage/storageAccounts/', variables('storageAccountName'), '/blobServices/default/containers/', parameters('deployContainerName'))]",
       "dependsOn": [
         "[resourceId('Microsoft.Compute/virtualMachines', variables('vmName'))]",
-        "[resourceId('Microsoft.Storage/storageAccounts/blobServices/containers', variables('storageAccountName'), 'default', variables('deploymentContainerName'))]"
+        "[resourceId('Microsoft.Storage/storageAccounts/blobServices/containers', variables('storageAccountName'), 'default', parameters('deployContainerName'))]"
       ],
       "properties": {
-        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '2a2b9908-6ea1-4ae2-8e65-a410df84e7d1')]",
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('storageBlobDataReader'))]",
         "principalId": "[reference(variables('vmName'), '2020-06-01', 'Full').identity.principalId]"
       }
     },
@@ -350,11 +385,38 @@
         "autoUpgradeMinorVersion": true,
         "settings": {
           "fileUris": "[parameters('botBackendExtensionFiles')]",
-          "commandToExecute": "sh deploy-bot-backend.sh"
+          "commandToExecute": "./install-bot-backend.sh"
         },
         "protectedSettings": {
           "managedIdentity": {}
         }
+      }
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2020-04-01-preview",
+      "name": "[variables('adminStorageAccountAccessName')]",
+      "scope": "[concat('Microsoft.Storage/storageAccounts/', variables('storageAccountName'))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Compute/virtualMachines', variables('vmName'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]"
+      ],
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('storageBlobDataContributor'))]",
+        "principalId": "[parameters('adminObjectId')]"
+      }
+    },
+    {
+      "type": "Microsoft.Authorization/roleAssignments",
+      "apiVersion": "2020-04-01-preview",
+      "name": "[variables('adminKeyVaultAdministrator')]",
+      "scope": "[concat('Microsoft.KeyVault/vaults/', variables('keyVaultName'))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.KeyVault/vaults/', variables('keyVaultName'))]"
+      ],
+      "properties": {
+        "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('keyVaultAdministrator'))]",
+        "principalId": "[parameters('adminObjectId')]"
       }
     }
   ],
@@ -366,14 +428,6 @@
     "keyVaultId": {
       "type": "string",
       "value": "[resourceId('Microsoft.KeyVault/vaults', variables('keyVaultName'))]"
-    },
-    "sqlServerPasswordName": {
-      "type": "string",
-      "value": "[variables('sqlServerPasswordName')]"
-    },
-    "vmPasswordName": {
-      "type": "string",
-      "value": "[variables('vmPasswordName')]"
     }
   }
 }
