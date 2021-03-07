@@ -6,6 +6,7 @@ using Azure.ResourceManager.Resources.Models;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using CliWrap;
+using Microsoft.Extensions.FileProviders;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -15,6 +16,8 @@ using System.IdentityModel.Tokens.Jwt;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text.Json;
@@ -31,6 +34,7 @@ namespace AzureBot.Deploy
         const string _deployContainerName = "deploy";
         static readonly Dictionary<string, JsonElement> _deserializedOutputCache = new();
         static readonly TokenCredential _credentials = new VisualStudioCredential(new VisualStudioCredentialOptions { TenantId = "36f71bd6-cb64-4543-920f-d5ddad13fc2b" });
+        static readonly EmbeddedFileProvider _fileProvider = new EmbeddedFileProvider(typeof(Program).Assembly);
 
         static Task Main(string[] args)
         {
@@ -51,8 +55,20 @@ namespace AzureBot.Deploy
             };
             createInfra.Handler = CommandHandler.Create<string, string, string, IConsole>(CreateInfrastructure);
 
+            var commands = new Command("commands", "View and edit Discord bot command registrations");
+            var commandUpdate = new Command("update", "Push the given command configuration to Discord")
+            {
+                new Option<string>(new[] { "--bot-token", "-b" }, "The bot token from the Discord application page"),
+                new Option<string>(new[] { "--command", "-c" }, "The name of the command to update. This should mat"),
+                new Option<string>(new[] { "--application-id", "-a" }, () => "815335811721592872", "The Discord bot application ID"),
+                new Option<string>(new[] { "--guild-id", "-g" }, "The guild ID to apply the command to. If omitted, the command will be registered globally") { IsRequired = false },
+            };
+            commandUpdate.Handler = CommandHandler.Create<string, string, string, string, IConsole>(UpdateCommand);
+            commands.Add(commandUpdate);
+
             root.Add(updateInfra);
             root.Add(createInfra);
+            root.Add(commands);
 
             return root.InvokeAsync(args);
         }
@@ -159,6 +175,26 @@ namespace AzureBot.Deploy
             console.Out.Write($"Deployed resources successfully to {infraGroup}\n");
         }
 
+        static async Task UpdateCommand(string botToken, string command, string applicationId, string guildId, IConsole console)
+        {
+            var client = new HttpClient();
+            using var commandFileContent = _fileProvider.GetFileInfo($"DiscordCommands.{command}.json").CreateReadStream();
+            var content = new StreamContent(commandFileContent);
+            content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            var url = string.IsNullOrEmpty(guildId)
+                ? $"https://discord.com/api/v8/applications/{applicationId}/commands"
+                : $"https://discord.com/api/v8/applications/{applicationId}/guilds/{guildId}/commands";
+            var request = new HttpRequestMessage(HttpMethod.Post, url)
+            {
+                Content = content,
+            };
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bot", botToken);
+            var response = await client.SendAsync(request);
+            var responseBody = await response.Content.ReadAsStringAsync();
+            console.Out.Write(responseBody + "\n");
+            response.EnsureSuccessStatusCode();
+        }
+
         /// <summary>
         /// Deploys azuredeploy.json with common parameters.
         /// </summary>
@@ -177,7 +213,9 @@ namespace AzureBot.Deploy
             var oidClaim = jwtSecurityToken.Claims.Single((c) => c.Type == "oid");
 
             console.Out.Write($"Deploying resources to {resourceGroup}\n");
-            var template = File.ReadAllText(Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!, "azuredeploy.json"));
+
+            using var templateReader = new StreamReader(_fileProvider.GetFileInfo("azuredeploy.json").CreateReadStream());
+            var template = templateReader.ReadToEnd();
             var properties = new DeploymentProperties(DeploymentMode.Incremental)
             {
                 Template = template,
