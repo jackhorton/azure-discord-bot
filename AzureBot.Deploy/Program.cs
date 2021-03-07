@@ -40,20 +40,23 @@ namespace AzureBot.Deploy
         {
             var root = new RootCommand("Deployment utilities for AzureBot");
 
-            var updateInfra = new Command("update-infra", "Deploys the infra for AzureBot")
+            var infra = new Command("infra", "View and edit infrastructure deployments for AzureBot");
+            var updateInfra = new Command("update", "Deploys the infra for AzureBot")
             {
                 new Option<string>(new[] { "--subscription-id", "-s" }, "The subscription ID for your azure subscription"),
                 new Option<string>(new[] { "--resource-group-prefix", "-r" }, "The prefix for both resource groups that get created"),
             };
             updateInfra.Handler = CommandHandler.Create<string, string, IConsole>(UpdateInfrastructure);
+            infra.Add(updateInfra);
 
-            var createInfra = new Command("create-infra", "Creates the skeleton infrastructure for AzureBot but does not deploy any code")
+            var createInfra = new Command("create", "Creates the skeleton infrastructure for AzureBot but does not deploy any code")
             {
                 new Option<string>(new[] { "--subscription-id", "-s" }, "The subscription ID for your azure subscription"),
                 new Option<string>(new[] { "--resource-group-prefix", "-r" }, "The prefix for both resource groups that get created"),
                 new Option<string>(new[] { "--location", "-l" }, "The location to create resources in"),
             };
             createInfra.Handler = CommandHandler.Create<string, string, string, IConsole>(CreateInfrastructure);
+            infra.Add(createInfra);
 
             var commands = new Command("commands", "View and edit Discord bot command registrations");
             var commandUpdate = new Command("update", "Push the given command configuration to Discord")
@@ -66,8 +69,7 @@ namespace AzureBot.Deploy
             commandUpdate.Handler = CommandHandler.Create<string, string, string, string, IConsole>(UpdateCommand);
             commands.Add(commandUpdate);
 
-            root.Add(updateInfra);
-            root.Add(createInfra);
+            root.Add(infra);
             root.Add(commands);
 
             return root.InvokeAsync(args);
