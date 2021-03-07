@@ -135,11 +135,11 @@ namespace AzureBot.Deploy
                         ContentHash = hash,
                     },
                 });
-                console.Out.Write($"Uploaded {relativePath} to {blobClient.Uri}\n");
+                console.Out.Write($"Uploaded {relativePath} with MD5 hash {hexHash}\n");
             }
             catch (RequestFailedException ex) when (ex.Status == (int)HttpStatusCode.PreconditionFailed || ex.ErrorCode == "BlobAlreadyExists")
             {
-                console.Out.Write($"{blobClient.Uri} already exists\n");
+                console.Out.Write($"Skipped upload of {relativePath} with MD5 hash {hexHash} (already exists)\n");
             }
 
             return blobClient.Uri.ToString();
@@ -204,6 +204,10 @@ namespace AzureBot.Deploy
                     adminObjectId = new
                     {
                         value = oidClaim.Value,
+                    },
+                    dnsZoneName = new
+                    {
+                        value = "groupmeme.xyz",
                     }
                 }),
             };

@@ -41,6 +41,12 @@
       "metadata": {
         "description": "The object ID of the user deploying the template to grant elevated privileges"
       }
+    },
+    "dnsZoneName": {
+      "type": "string",
+      "metadata": {
+        "description": "The domain name to link this deployment to"
+      }
     }
   },
   "variables": {
@@ -69,7 +75,8 @@
     "adminStorageAccountAccessName": "[guid(parameters('adminObjectId'), resourceGroup().name, variables('storageBlobDataContributor'), variables('storageAccountName'))]",
     "storageBlobDataContributor": "ba92f5b4-2d11-453d-a403-e96b0029c9fe",
     "adminKeyVaultAdministrator": "[guid(parameters('adminObjectId'), resourceGroup().name, variables('keyVaultAdministrator'), variables('keyVaultName'))]",
-    "keyVaultAdministrator": "00482a5a-887f-4fb3-b363-3b7fe8e74483"
+    "keyVaultAdministrator": "00482a5a-887f-4fb3-b363-3b7fe8e74483",
+    "dnsARecordName": "bot"
   },
   "resources": [
     {
@@ -266,6 +273,19 @@
               "destinationAddressPrefix": "*",
               "destinationPortRange": "80"
             }
+          },
+          {
+            "name": "HTTPS",
+            "properties": {
+              "priority": 1002,
+              "protocol": "TCP",
+              "access": "Allow",
+              "direction": "Inbound",
+              "sourceAddressPrefix": "*",
+              "sourcePortRange": "*",
+              "destinationAddressPrefix": "*",
+              "destinationPortRange": "443"
+            }
           }
         ]
       }
@@ -385,7 +405,7 @@
         "autoUpgradeMinorVersion": true,
         "settings": {
           "fileUris": "[parameters('botBackendExtensionFiles')]",
-          "commandToExecute": "./install-bot-backend.sh"
+          "commandToExecute": "[concat('./install-bot-backend.sh ', variables('dnsARecordName'), '.', parameters('dnsZoneName'))]"
         },
         "protectedSettings": {
           "managedIdentity": {}
@@ -417,6 +437,29 @@
       "properties": {
         "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('keyVaultAdministrator'))]",
         "principalId": "[parameters('adminObjectId')]"
+      }
+    },
+    {
+      "type": "Microsoft.Network/dnsZones",
+      "apiVersion": "2018-05-01",
+      "name": "[parameters('dnsZoneName')]",
+      "location": "global"
+    },
+    {
+      "type": "Microsoft.Network/dnsZones/A",
+      "apiVersion": "2018-05-01",
+      "name": "[concat(parameters('dnsZoneName'), '/', variables('dnsARecordName'))]",
+      "location": "global",
+      "dependsOn": [
+        "[parameters('dnsZoneName')]"
+      ],
+      "properties": {
+        "TTL": 3600,
+        "ARecords": [
+          {
+            "ipv4Address": "[reference(variables('publicIPAddressName')).IpAddress]"
+          }
+        ]
       }
     }
   ],

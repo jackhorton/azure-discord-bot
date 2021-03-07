@@ -2,6 +2,7 @@
 
 set -euo pipefail
 
+DOMAIN_NAME=$1
 export DEBIAN_FRONTEND=noninteractive
 
 apt-get update -y
@@ -13,7 +14,7 @@ apt-get upgrade -y
 apt-get install caddy -y
 
 tee /etc/caddy/Caddyfile > /dev/null <<EOM
-:80
+$DOMAIN_NAME
 
 reverse_proxy 127.0.0.1:5000
 EOM
@@ -22,7 +23,7 @@ systemctl restart caddy
 systemctl is-active --quiet azurebot && systemctl stop azurebot
 
 mkdir -p /var/www/azurebot
-cp ./AzureBot.Bot ./AzureBot.Bot.pdb ./appsettings.json /var/www/azurebot
+cp ./AzureBot.Bot ./AzureBot.Bot.pdb ./appsettings.json ./libsodium.so /var/www/azurebot
 chown --recursive www-data /var/www/azurebot
 
 tee /etc/systemd/system/azurebot.service > /dev/null <<EOM
