@@ -1,33 +1,35 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net5.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="azuredeploy.json" />
-    <None Remove="commands.json" />
+    <None Remove="Commands\UpdateCommandCommand.cs~RF4d02f0a8.TMP" />
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="azuredeploy.json" />
-    <EmbeddedResource Include="DiscordCommands\hello-world.json" />
+    <Bicep Include="infra-base.bicep" />
+    <Bicep Include="infra-controller.bicep" />
+    <Bicep Include="vms.bicep" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Azure.Identity" Version="1.4.0-beta.3" />
-    <PackageReference Include="Azure.ResourceManager.Resources" Version="1.0.0-preview.2" />
-    <PackageReference Include="Azure.Storage.Blobs" Version="12.9.0-beta.1" />
-    <PackageReference Include="CliWrap" Version="3.3.1" />
-    <PackageReference Include="FluentMigrator" Version="3.2.15" />
-    <PackageReference Include="FluentMigrator.Runner" Version="3.2.15" />
-    <PackageReference Include="FluentMigrator.Runner.SqlServer" Version="3.2.15" />
-    <PackageReference Include="Microsoft.Data.SqlClient" Version="2.1.2" />
-    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="6.0.0-preview.1.21103.6" />
-    <PackageReference Include="System.CommandLine" Version="2.0.0-beta1.20574.7" />
-    <PackageReference Include="System.Linq.Async" Version="5.0.0" />
+    <PackageReference Include="Azure.Bicep.CommandLine.win-x64" Version="0.4.1124" />
+    <PackageReference Include="Azure.Bicep.MSBuild" Version="0.4.1124" />
+    <PackageReference Include="Azure.Identity" Version="1.5.0" />
+    <PackageReference Include="Azure.ResourceManager.Resources" Version="1.0.0-beta.5" />
+    <PackageReference Include="Azure.Security.KeyVault.Secrets" Version="4.2.0" />
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.10.0" />
+    <PackageReference Include="CliWrap" Version="3.3.3" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="6.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="6.0.0" />
+    <PackageReference Include="System.CommandLine" Version="2.0.0-beta2.21617.1" />
+    <PackageReference Include="System.Linq.Async" Version="5.1.0" />
+    <PackageReference Include="System.Net.Http.Json" Version="6.0.0" />
   </ItemGroup>
 
 </Project>
