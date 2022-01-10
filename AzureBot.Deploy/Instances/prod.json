@@ -9,5 +9,9 @@
         "ApplicationId": "815335811721592872",
         "BotTokenVault": "https://azurebot-prod-shared-kv.vault.azure.net/",
         "BotTokenSecretName": "bot-token"
+    },
+    "Https": {
+        "Email": "jackpeterhorton@gmail.com",
+        "Directory": "https://acme-v02.api.letsencrypt.org/directory"
     }
 }

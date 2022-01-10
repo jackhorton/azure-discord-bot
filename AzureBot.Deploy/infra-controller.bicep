@@ -11,6 +11,8 @@ param storageAccountName string
 @description('The domain name to link this deployment to')
 param dnsZoneName string
 
+param certUrl string
+
 var unique = uniqueString(vmName, resourceGroup().id, subscription().id)
 var vnetName = 'azurebot-bot-vnet'
 var subnetName = 'azurebot-bot-subnet'
@@ -152,6 +154,10 @@ resource installBotExtension 'Microsoft.Compute/virtualMachines/extensions@2019-
     type: 'CustomScript'
     typeHandlerVersion: '2.1'
     autoUpgradeMinorVersion: true
+    #disable-next-line BCP037
+    provisionAfterExtensions: [
+      'InstallHttpsCert'
+    ]
     protectedSettings: {
       fileUris: botBackendExtensionFiles
       commandToExecute: 'bash ./install-bot-backend.sh'
@@ -163,6 +169,26 @@ resource installBotExtension 'Microsoft.Compute/virtualMachines/extensions@2019-
   dependsOn: [
     vmStorageAccess
   ]
+}
+
+resource httpsExtension 'Microsoft.Compute/virtualMachines/extensions@2021-07-01' = {
+  name: 'InstallHttpsCert'
+  location: resourceGroup().location
+  parent: vm
+  properties: {
+    publisher: 'Microsoft.Azure.KeyVault'
+    type: 'KeyVaultForLinux'
+    typeHandlerVersion: '2.0'
+    autoUpgradeMinorVersion: true
+    enableAutomaticUpgrade: true
+    settings: {
+      secretsManagementSettings: {
+        observedCertificates: [
+          certUrl
+        ]
+      }
+    }
+  }
 }
 
 resource dnsZone 'Microsoft.Network/dnsZones@2018-05-01' existing = {

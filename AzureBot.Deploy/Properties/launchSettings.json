@@ -1,0 +1,14 @@
+{
+  "profiles": {
+    "WSL": {
+      "commandName": "WSL2",
+      "environmentVariables": {},
+      "distributionName": ""
+    },
+    "gen-cert prod": {
+      "commandName": "Project",
+      "commandLineArgs": "gen-cert --instance ..\\..\\..\\Instances\\prod.json",
+      "workingDirectory": "$(ProjectDirectory)"
+    }
+  }
+}

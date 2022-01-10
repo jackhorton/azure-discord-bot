@@ -1,24 +1,31 @@
-﻿using Azure.Core;
+﻿using Azure;
+using Azure.Core;
 using Azure.ResourceManager;
 using Azure.ResourceManager.Resources;
+using Azure.Security.KeyVault.Certificates;
 using Azure.Security.KeyVault.Secrets;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using AzureBot.Deploy.Configuration;
 using AzureBot.Deploy.Services;
+using Certes;
+using Certes.Acme;
 using CliWrap;
 using CliWrap.Buffered;
+using DnsClient;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Invocation;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -43,12 +50,14 @@ internal class DeployInfraCommand : ICommandHandler
     private readonly ILogger<DeployInfraCommand> _logger;
     private readonly ArmDeployment _armDeployment;
     private readonly TokenCredential _credential;
+    private readonly AcmeCertificateGenerator _acmeCertificateGenerator;
 
-    public DeployInfraCommand(ILogger<DeployInfraCommand> logger, ArmDeployment armDeployment, TokenCredential credential)
+    public DeployInfraCommand(ILogger<DeployInfraCommand> logger, ArmDeployment armDeployment, TokenCredential credential, AcmeCertificateGenerator acmeCertificateGenerator)
     {
         _logger = logger;
         _armDeployment = armDeployment;
         _credential = credential;
+        _acmeCertificateGenerator = acmeCertificateGenerator;
     }
 
     public async Task<int> InvokeAsync(InvocationContext context)
@@ -67,7 +76,6 @@ internal class DeployInfraCommand : ICommandHandler
             .GetResourceGroups()
             .CreateOrUpdateAsync(instance.ResourceGroupName, new ResourceGroupData(instance.Location), cancellationToken: cancellationToken);
         await rgUpdateOperation.WaitForCompletionAsync();
-
 
         var baseDeployment = await _armDeployment.DeployLocalTemplateAsync(
             "infra-base",
@@ -90,12 +98,12 @@ internal class DeployInfraCommand : ICommandHandler
         var fileUrls = await GetExtensionFilesAsync(baseOutputs, publishDirectory, cancellationToken).ToArrayAsync(cancellationToken);
 
         var kvUrl = baseOutputs.GetProperty("keyVaultUrl").GetProperty("value").GetString();
-        var kvClient = new SecretClient(new Uri(kvUrl!), _credential);
+        var secretClient = new SecretClient(new Uri(kvUrl!), _credential);
 
         string publicKeyData;
         try
         {
-            var secret = await kvClient.GetSecretAsync("bot-ssh-pub");
+            var secret = await secretClient.GetSecretAsync("bot-ssh-pub");
             publicKeyData = secret.Value.Value;
         }
         catch
@@ -107,10 +115,13 @@ internal class DeployInfraCommand : ICommandHandler
                 .WithArguments((args) => args.Add("-f").Add(keyPath).Add("-b").Add("4096").Add("-t").Add("rsa").Add("-m").Add("PEM").Add("-N").Add(""))
                 .WithValidation(CommandResultValidation.ZeroExitCode)
                 .ExecuteBufferedAsync(cancellationToken);
-            await kvClient.SetSecretAsync(new KeyVaultSecret("bot-ssh", File.ReadAllText(keyPath)), cancellationToken);
+            await secretClient.SetSecretAsync(new KeyVaultSecret("bot-ssh", File.ReadAllText(keyPath)), cancellationToken);
             publicKeyData = File.ReadAllText($"{keyPath}.pub");
-            await kvClient.SetSecretAsync(new KeyVaultSecret("bot-ssh-pub", publicKeyData), cancellationToken);
+            await secretClient.SetSecretAsync(new KeyVaultSecret("bot-ssh-pub", publicKeyData), cancellationToken);
         }
+
+        var certUrl = await _acmeCertificateGenerator.GenerateHttpsCertificateAsync(
+            instance.Domain, instance.ControllerName, instance.Https.Email, instance.Https.Directory, new Uri(kvUrl!), resourceGroupId, cancellationToken);
 
         await _armDeployment.DeployLocalTemplateAsync(
             "infra-controller",
@@ -135,6 +146,10 @@ internal class DeployInfraCommand : ICommandHandler
                 vmName = new
                 {
                     value = instance.ControllerName,
+                },
+                httpsCertUrl = new
+                {
+                    value = certUrl,
                 },
             },
             resourceGroupId,

@@ -7,13 +7,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="Commands\UpdateCommandCommand.cs~RF4d02f0a8.TMP" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Bicep Include="infra-base.bicep" />
     <Bicep Include="infra-controller.bicep" />
     <Bicep Include="vms.bicep" />
+    <Bicep Include="acme-challenge.bicep" />
   </ItemGroup>
 
   <ItemGroup>
@@ -21,9 +18,12 @@
     <PackageReference Include="Azure.Bicep.MSBuild" Version="0.4.1124" />
     <PackageReference Include="Azure.Identity" Version="1.5.0" />
     <PackageReference Include="Azure.ResourceManager.Resources" Version="1.0.0-beta.5" />
+    <PackageReference Include="Azure.Security.KeyVault.Certificates" Version="4.2.0" />
     <PackageReference Include="Azure.Security.KeyVault.Secrets" Version="4.2.0" />
     <PackageReference Include="Azure.Storage.Blobs" Version="12.10.0" />
-    <PackageReference Include="CliWrap" Version="3.3.3" />
+    <PackageReference Include="Certes" Version="3.0.3" />
+    <PackageReference Include="CliWrap" Version="3.4.0" />
+    <PackageReference Include="DnsClient" Version="1.5.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="6.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="6.0.0" />

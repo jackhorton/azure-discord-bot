@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace AzureBot.Deploy.Configuration;
 
-public record DiscordApp
+public record DiscordAppConfig
 {
     [Required]
     public string ApplicationId { get; init; } = default!;

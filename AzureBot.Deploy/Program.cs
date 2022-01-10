@@ -2,6 +2,7 @@
 using Azure.Identity;
 using AzureBot.Deploy.Commands;
 using AzureBot.Deploy.Services;
+using DnsClient;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.CommandLine;
@@ -25,6 +26,8 @@ internal class Program
         });
         services.AddSingleton(_credentials);
         services.AddSingleton<ArmDeployment>();
+        services.AddSingleton<ILookupClient, LookupClient>();
+        services.AddSingleton<AcmeCertificateGenerator>();
         services.AddHttpClient();
         var serviceProvider = services.BuildServiceProvider();
 
@@ -32,6 +35,7 @@ internal class Program
         {
             DeployInfraCommand.GetCommand(serviceProvider),
             UpdateCommandCommand.GetCommand(serviceProvider),
+            GenHttpsCertCommand.GetCommand(serviceProvider),
         };
 
         return root.InvokeAsync(args);

@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 
 namespace AzureBot.Deploy.Configuration;
 
-public record Instance
+public record InstanceConfig
 {
     public Guid SubscriptionId { get; init; }
     [Required]
@@ -16,5 +16,8 @@ public record Instance
     [Required]
     public string Domain { get; init; } = default!;
     public string ControllerName { get; init; } = default!;
-    public DiscordApp Discord { get; init; } = default!;
+    [Required]
+    public DiscordAppConfig Discord { get; init; } = default!;
+    [Required]
+    public HttpsConfig Https { get; init; } = default!;
 }
