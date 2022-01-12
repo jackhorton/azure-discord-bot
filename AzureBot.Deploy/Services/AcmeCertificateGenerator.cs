@@ -139,7 +139,7 @@ internal class AcmeCertificateGenerator
         _logger.LogInformation("Generating a CSR from key vault");
         var keyVaultCertOperation = await certs.StartCreateCertificateAsync(
             certName,
-            new CertificatePolicy("unknown", $"CN={orderIdentifier}")
+            new CertificatePolicy(WellKnownIssuerNames.Unknown, $"CN={orderIdentifier}")
             {
                 ContentType = CertificateContentType.Pem,
                 KeyType = CertificateKeyType.Rsa,
@@ -154,8 +154,9 @@ internal class AcmeCertificateGenerator
             await order.Finalize(keyVaultCertOperation.Properties.Csr);
             var chain = await order.Download();
 
+            var key = KeyFactory.NewKey(KeyAlgorithm.RS256);
             var merged = await certs.MergeCertificateAsync(
-                new MergeCertificateOptions(certName, new[] { chain.ToPfx(null).Build(orderIdentifier, null) }),
+                new MergeCertificateOptions(certName, new[] { chain.ToPfx(key).Build(orderIdentifier, "") }),
                 cancellationToken);
             return merged.Value.SecretId;
         }
