@@ -52,6 +52,54 @@ resource workspace 'Microsoft.OperationalInsights/workspaces@2020-03-01-preview'
   properties: {}
 }
 
+resource syslogDcr 'Microsoft.Insights/dataCollectionRules@2021-04-01' = {
+  name: 'bot-syslog-dcr'
+  location: resourceGroup().location
+  kind: 'Linux'
+  properties: {
+    dataSources: {
+      syslog: [
+        {
+          streams: [
+            'Microsoft-Syslog'
+          ]
+          facilityNames: [
+            'auth'
+            'authpriv'
+            'cron'
+            'daemon'
+            'kern'
+            'syslog'
+            'user'
+          ]
+          logLevels: [
+            '*'
+          ]
+          name: 'syslog-source'
+        }
+      ]
+    }
+    destinations: {
+      logAnalytics: [
+        {
+          workspaceResourceId: workspace.id
+          name: workspace.name
+        }
+      ]
+    }
+    dataFlows: [
+      {
+        streams: [
+          'Microsoft-Syslog'
+        ]
+        destinations: [
+          workspace.name
+        ]
+      }
+    ]
+  }
+}
+
 resource keyVault 'Microsoft.KeyVault/vaults@2019-09-01' = {
   name: 'azurebot-kv${unique}'
   location: resourceGroup().location
@@ -225,11 +273,24 @@ resource adminKeyVaultAdministrator 'Microsoft.Authorization/roleAssignments@202
   }
 }
 
+resource keyVaultSecretsUser 'Microsoft.Authorization/roleDefinitions@2018-01-01-preview' existing = {
+  name: '4633458b-17de-408a-b874-0445c86b69e6'
+  scope: subscription()
+}
+resource vmKeyVaultSecretsUser 'Microsoft.Authorization/roleAssignments@2020-08-01-preview' = {
+  name: guid(vmManagedIdentity.id, keyVaultSecretsUser.id, keyVault.id)
+  scope: keyVault
+  properties: {
+    principalId: vmManagedIdentity.properties.principalId
+    roleDefinitionId: keyVaultSecretsUser.id
+  }
+}
+
 resource dnsZone 'Microsoft.Network/dnsZones@2018-05-01' = {
   name: dnsZoneName
   location: 'global'
 }
 
-output keyVaultUrl string = keyVault.properties.vaultUri
+output keyVaultName string = keyVault.name
 output storageAccountName string = storage.name
 output deployContainerUrl string = '${storage.properties.primaryEndpoints.blob}${deployContainer.name}'

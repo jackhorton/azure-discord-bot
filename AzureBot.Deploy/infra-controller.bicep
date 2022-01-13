@@ -11,7 +11,9 @@ param storageAccountName string
 @description('The domain name to link this deployment to')
 param dnsZoneName string
 
-param certUrl string
+param httpsCertUrl string
+
+param keyVaultName string
 
 var unique = uniqueString(vmName, resourceGroup().id, subscription().id)
 var vnetName = 'azurebot-bot-vnet'
@@ -31,6 +33,14 @@ resource nsg 'Microsoft.Network/networkSecurityGroups@2020-06-01' existing = {
 
 resource vnet 'Microsoft.Network/virtualNetworks@2020-06-01' existing = {
   name: 'azurebot-bot-vnet'
+}
+
+resource appInsights 'Microsoft.Insights/components@2020-02-02-preview' existing = {
+  name: 'azurebot-insights'
+}
+
+resource syslogDcr 'Microsoft.Insights/dataCollectionRules@2021-04-01' existing = {
+  name: 'bot-syslog-dcr'
 }
 
 resource nic 'Microsoft.Network/networkInterfaces@2020-06-01' = {
@@ -124,7 +134,7 @@ resource vm 'Microsoft.Compute/virtualMachines@2021-07-01' = {
     }
   }
   identity: {
-    type: 'UserAssigned'
+    type: 'SystemAssigned, UserAssigned'
     userAssignedIdentities: {
       '${vmManagedIdentity.id}': {}
     }
@@ -160,7 +170,7 @@ resource installBotExtension 'Microsoft.Compute/virtualMachines/extensions@2019-
     ]
     protectedSettings: {
       fileUris: botBackendExtensionFiles
-      commandToExecute: 'bash ./install-bot-backend.sh'
+      commandToExecute: 'bash ./install-bot-backend.sh ${keyVaultName} ${appInsights.properties.ConnectionString}'
       managedIdentity: {
         clientId: vmManagedIdentity.properties.clientId
       }
@@ -168,6 +178,7 @@ resource installBotExtension 'Microsoft.Compute/virtualMachines/extensions@2019-
   }
   dependsOn: [
     vmStorageAccess
+    httpsExtension
   ]
 }
 
@@ -184,11 +195,39 @@ resource httpsExtension 'Microsoft.Compute/virtualMachines/extensions@2021-07-01
     settings: {
       secretsManagementSettings: {
         observedCertificates: [
-          certUrl
+          httpsCertUrl
         ]
+        certificateStoreLocation: '/var/www'
+      }
+      authenticationSettings: {
+        msiClientId: vmManagedIdentity.properties.clientId
       }
     }
   }
+}
+
+resource monitorExtension 'Microsoft.Compute/virtualMachines/extensions@2021-07-01' = {
+  name: 'AzureMonitor'
+  parent: vm
+  location: resourceGroup().location
+  properties: {
+    publisher: 'Microsoft.Azure.Monitor'
+    type: 'AzureMonitorLinuxAgent'
+    typeHandlerVersion: '1.5'
+    autoUpgradeMinorVersion: true
+    enableAutomaticUpgrade: true
+  }
+}
+
+resource dcrAssociation 'Microsoft.Insights/dataCollectionRuleAssociations@2021-04-01' = {
+  name: guid(syslogDcr.id, vm.id)
+  scope: vm
+  properties: {
+    dataCollectionRuleId: syslogDcr.id
+  }
+  dependsOn: [
+    monitorExtension
+  ]
 }
 
 resource dnsZone 'Microsoft.Network/dnsZones@2018-05-01' existing = {

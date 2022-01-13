@@ -97,8 +97,9 @@ internal class DeployInfraCommand : ICommandHandler
 
         var fileUrls = await GetExtensionFilesAsync(baseOutputs, publishDirectory, cancellationToken).ToArrayAsync(cancellationToken);
 
-        var kvUrl = baseOutputs.GetProperty("keyVaultUrl").GetProperty("value").GetString();
-        var secretClient = new SecretClient(new Uri(kvUrl!), _credential);
+        var kvName = baseOutputs.GetProperty("keyVaultName").GetProperty("value").GetString();
+        var kvUrl = new Uri($"https://{kvName}.vault.azure.net");
+        var secretClient = new SecretClient(kvUrl, _credential);
 
         string publicKeyData;
         try
@@ -121,7 +122,7 @@ internal class DeployInfraCommand : ICommandHandler
         }
 
         var certUrl = await _acmeCertificateGenerator.GenerateHttpsCertificateAsync(
-            instance.Domain, instance.ControllerName, instance.Https.Email, instance.Https.Directory, new Uri(kvUrl!), resourceGroupId, cancellationToken);
+            instance.Domain, instance.ControllerName, instance.Https.Email, instance.Https.Directory, kvUrl, resourceGroupId, cancellationToken);
 
         await _armDeployment.DeployLocalTemplateAsync(
             "infra-controller",
@@ -151,6 +152,10 @@ internal class DeployInfraCommand : ICommandHandler
                 {
                     value = certUrl,
                 },
+                keyVaultName = new
+                {
+                    value = kvName
+                }
             },
             resourceGroupId,
             cancellationToken);
@@ -198,7 +203,7 @@ internal class DeployInfraCommand : ICommandHandler
 
         _logger.LogInformation("Publishing {projectDirectory} to {publishDirectory}", botProjectDirectory, publishDirectory);
         await Cli.Wrap("dotnet")
-            .WithArguments($"publish -c Release -r linux-x64 -o {publishDirectory} --nologo {botProjectDirectory}")
+            .WithArguments($"publish -c Release -r linux-x64 -o {publishDirectory} --nologo --no-self-contained {botProjectDirectory}")
             .WithValidation(CommandResultValidation.ZeroExitCode)
             .ExecuteAsync(cancellationToken);
         return publishDirectory;

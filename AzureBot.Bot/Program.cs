@@ -1,19 +1,36 @@
+using Azure.Monitor.OpenTelemetry.Exporter;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using OpenTelemetry.Trace;
 
-namespace AzureBot.Bot;
+var builder = WebApplication.CreateBuilder(args);
 
-public class Program
+// Add services to the container.
+builder.Services.AddControllers();
+builder.Services.AddOpenTelemetryTracing((tracing) =>
 {
-    public static void Main(string[] args)
+    tracing.AddAspNetCoreInstrumentation();
+    tracing.AddAzureMonitorTraceExporter((exporter) =>
     {
-        CreateHostBuilder(args).Build().Run();
-    }
+        exporter.ConnectionString = builder.Configuration["AzureMonitor:ConnectionString"];
+    });
+});
 
-    public static IHostBuilder CreateHostBuilder(string[] args) =>
-        Host.CreateDefaultBuilder(args)
-            .ConfigureWebHostDefaults(webBuilder =>
-            {
-                webBuilder.UseStartup<Startup>();
-            });
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+if (!app.Environment.IsDevelopment())
+{
+    app.UseExceptionHandler("/Error");
 }
+
+app.UseHttpsRedirection();
+app.UseStaticFiles();
+
+app.UseAuthorization();
+
+app.MapControllers();
+
+app.Run();
