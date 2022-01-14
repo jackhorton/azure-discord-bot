@@ -1,58 +1,51 @@
-﻿using Azure;
-using Azure.Core;
+﻿using Azure.Core;
 using Azure.ResourceManager;
 using Azure.ResourceManager.Resources;
-using Azure.Security.KeyVault.Certificates;
 using Azure.Security.KeyVault.Secrets;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
 using AzureBot.Deploy.Configuration;
 using AzureBot.Deploy.Services;
-using Certes;
-using Certes.Acme;
 using CliWrap;
 using CliWrap.Buffered;
-using DnsClient;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Invocation;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Command = System.CommandLine.Command;
 
-namespace AzureBot.Deploy.Commands;
+namespace AzureBot.Deploy.Commands.Infra;
 
-internal class DeployInfraCommand : ICommandHandler
+internal class DeployCommand : ICommandHandler
 {
-    private static readonly Option<InstanceParameter> _instanceOption = new(new[] { "--instance", "-i" }, "The configuration file for the instance you are deploying");
+    private static readonly Option<InstanceParameter> _instanceOption = new(new[] { "--instance", "-i" }, "The configuration file for the instance you are deploying") { IsRequired = true };
 
     public static Command GetCommand(IServiceProvider serviceProvider)
     {
-        var command = new Command("update-infra", "Creates or updates the bot controller infrastructure")
+        var command = new Command("deploy", "Creates or updates the bot controller infrastructure")
         {
             _instanceOption,
         };
-        command.Handler = ActivatorUtilities.CreateInstance<DeployInfraCommand>(serviceProvider);
+        command.Handler = ActivatorUtilities.CreateInstance<DeployCommand>(serviceProvider);
         return command;
     }
 
-    private readonly ILogger<DeployInfraCommand> _logger;
+    private readonly ILogger<DeployCommand> _logger;
     private readonly ArmDeployment _armDeployment;
     private readonly TokenCredential _credential;
     private readonly AcmeCertificateGenerator _acmeCertificateGenerator;
 
-    public DeployInfraCommand(ILogger<DeployInfraCommand> logger, ArmDeployment armDeployment, TokenCredential credential, AcmeCertificateGenerator acmeCertificateGenerator)
+    public DeployCommand(ILogger<DeployCommand> logger, ArmDeployment armDeployment, TokenCredential credential, AcmeCertificateGenerator acmeCertificateGenerator)
     {
         _logger = logger;
         _armDeployment = armDeployment;

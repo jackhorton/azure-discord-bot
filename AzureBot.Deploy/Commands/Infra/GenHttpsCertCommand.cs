@@ -8,17 +8,17 @@ using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.Threading.Tasks;
 
-namespace AzureBot.Deploy.Commands;
+namespace AzureBot.Deploy.Commands.Infra;
 
 internal class GenHttpsCertCommand : ICommandHandler
 {
-    private static readonly Option<InstanceParameter> _instanceOption = new(new[] { "--instance", "-i" }, "The configuration file for the instance you are deploying");
+    private static readonly Option<InstanceParameter> _instanceOption = new(new[] { "--instance", "-i" }, "The configuration file for the instance containing the certificate") { IsRequired = true };
     private readonly ILogger<GenHttpsCertCommand> _logger;
     private readonly AcmeCertificateGenerator _acmeCertificateGenerator;
 
     public static Command GetCommand(IServiceProvider serviceProvider)
     {
-        var command = new Command("gen-cert", "Creates or updates the bot controller infrastructure")
+        var command = new Command("gen-cert", "Creates or updates the ACME HTTPS certificate")
         {
             _instanceOption,
         };

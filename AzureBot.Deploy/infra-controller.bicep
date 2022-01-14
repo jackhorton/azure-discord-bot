@@ -155,6 +155,19 @@ resource vmStorageAccess 'Microsoft.Authorization/roleAssignments@2020-04-01-pre
   }
 }
 
+resource monitoringContributor 'Microsoft.Authorization/roleDefinitions@2018-01-01-preview' existing = {
+  name: '749f88d5-cbae-40b8-bcfc-e573ddc772fa'
+  scope: subscription()
+}
+resource workspaceAccess 'Microsoft.Authorization/roleAssignments@2020-08-01-preview' = {
+  name: guid(vm.id, monitoringContributor.id, workspace.id)
+  scope: workspace
+  properties: {
+    principalId: vm.identity.principalId
+    roleDefinitionId: monitoringContributor.id
+  }
+}
+
 resource installBotExtension 'Microsoft.Compute/virtualMachines/extensions@2019-07-01' = {
   parent: vm
   name: 'DeployAzurebot'
@@ -170,7 +183,7 @@ resource installBotExtension 'Microsoft.Compute/virtualMachines/extensions@2019-
     ]
     protectedSettings: {
       fileUris: botBackendExtensionFiles
-      commandToExecute: 'bash ./install-bot-backend.sh ${keyVaultName} ${appInsights.properties.ConnectionString}'
+      commandToExecute: './install-bot-backend.sh ${keyVaultName} ${appInsights.properties.ConnectionString}'
       managedIdentity: {
         clientId: vmManagedIdentity.properties.clientId
       }

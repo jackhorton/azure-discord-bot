@@ -31,15 +31,17 @@ Description=AzureBot backend API
 [Service]
 WorkingDirectory=/var/www/azurebot
 ExecStart=dotnet /var/www/azurebot/AzureBot.Bot.dll
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=azurebot-bot
 Restart=always
 # Restart service after 10 seconds if the dotnet service crashes:
 RestartSec=10
 KillSignal=SIGINT
-SyslogIdentifier=azurebot-bot
 User=www-data
 Environment=ASPNETCORE_ENVIRONMENT=Production
 Environment=DOTNET_PRINT_TELEMETRY_MESSAGE=false
-Environment=AZUREMONITOR__CONNECTIONSSTRING=$AZUREMONITOR__CONNECTIONSSTRING
+Environment=AZUREMONITOR__CONNECTIONSSTRING=$AZUREMONITOR__CONNECTIONSTRING
 Environment=KESTREL__ENDPOINTS__HTTPS__URL=https://0.0.0.0:443
 Environment=KESTREL__ENDPOINTS__HTTPS__CERTIFICATE__PATH=/var/www/${KEY_VAULT_URL}.acme-https-cert
 Environment=KESTREL__ENDPOINTS__HTTPS__CERTIFICATE__KEYPATH=/var/www/${KEY_VAULT_URL}.acme-https-cert
@@ -47,6 +49,16 @@ Environment=KESTREL__ENDPOINTS__HTTPS__CERTIFICATE__KEYPATH=/var/www/${KEY_VAULT
 [Install]
 WantedBy=multi-user.target
 EOM
+
+tee /etc/rsyslog.d/10-azurebot.conf > /dev/null <<EOM
+if \$programname == 'azurebot-bot' then /var/log/azurebot/azurebot.bot.log
+& stop
+EOM
+
+mkdir -p /var/log/azurebot
+chown --recursive syslog:adm /var/log/azurebot
+
+systemctl restart rsyslog
 
 systemctl enable azurebot
 systemctl start azurebot

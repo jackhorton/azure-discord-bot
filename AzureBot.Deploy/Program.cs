@@ -1,6 +1,7 @@
 ﻿using Azure.Core;
 using Azure.Identity;
-using AzureBot.Deploy.Commands;
+using AzureBot.Deploy.Commands.Discord;
+using AzureBot.Deploy.Commands.Infra;
 using AzureBot.Deploy.Services;
 using DnsClient;
 using Microsoft.Extensions.DependencyInjection;
@@ -28,14 +29,13 @@ internal class Program
         services.AddSingleton<ArmDeployment>();
         services.AddSingleton<ILookupClient, LookupClient>();
         services.AddSingleton<AcmeCertificateGenerator>();
-        services.AddHttpClient();
+        services.AddHttpClient<DiscordClient>();
         var serviceProvider = services.BuildServiceProvider();
 
         var root = new RootCommand("Deployment utilities for AzureBot")
         {
-            DeployInfraCommand.GetCommand(serviceProvider),
-            UpdateCommandCommand.GetCommand(serviceProvider),
-            GenHttpsCertCommand.GetCommand(serviceProvider),
+            InfraCommand.GetCommand(serviceProvider),
+            DiscordCommand.GetCommand(serviceProvider),
         };
 
         return root.InvokeAsync(args);

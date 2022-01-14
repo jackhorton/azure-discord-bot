@@ -8,7 +8,10 @@
     "Discord": {
         "ApplicationId": "815335811721592872",
         "BotTokenVault": "https://azurebot-prod-shared-kv.vault.azure.net/",
-        "BotTokenSecretName": "bot-token"
+        "BotTokenSecretName": "bot-token",
+        "WellKnownGuilds": {
+            "logicord": "811034138306936862"
+        }
     },
     "Https": {
         "Email": "jackpeterhorton@gmail.com",

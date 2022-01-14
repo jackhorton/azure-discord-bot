@@ -11,16 +11,17 @@ namespace AzureBot.Bot.Controllers;
 [ApiController]
 public class InteractionsController : ControllerBase
 {
-    private readonly byte[] _rawPublicKey = Convert.FromHexString("265c24669b077eb4b2c5778a04f903025626224d50ae7da2d6537d35bd022651");
+    private readonly SignatureAlgorithm _verificationAlgorithm = SignatureAlgorithm.Ed25519;
     private readonly ILogger<InteractionsController> _logger;
-    private readonly SignatureAlgorithm _verificationAlgorithm;
     private readonly PublicKey _verificationPublicKey;
 
     public InteractionsController(ILogger<InteractionsController> logger)
     {
         _logger = logger;
-        _verificationAlgorithm = SignatureAlgorithm.Ed25519;
-        _verificationPublicKey = PublicKey.Import(_verificationAlgorithm, _rawPublicKey, KeyBlobFormat.RawPublicKey);
+        _verificationPublicKey = PublicKey.Import(
+            _verificationAlgorithm,
+            Convert.FromHexString("265c24669b077eb4b2c5778a04f903025626224d50ae7da2d6537d35bd022651"),
+            KeyBlobFormat.RawPublicKey);
     }
 
     [HttpPost]
@@ -59,7 +60,7 @@ public class InteractionsController : ControllerBase
                 type = 4,
                 data = new
                 {
-                    content = $"Hello, {memberUsername}",
+                    content = $"Hello, {memberUsername}. Full interaction: {body.RootElement}",
                 }
             });
         }

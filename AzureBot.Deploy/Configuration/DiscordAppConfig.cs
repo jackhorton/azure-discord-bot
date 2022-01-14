@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace AzureBot.Deploy.Configuration;
@@ -11,4 +12,5 @@ public record DiscordAppConfig
     public Uri BotTokenVault { get; init; } = default!;
     [Required]
     public string BotTokenSecretName { get; init; } = default!;
+    public IReadOnlyDictionary<string, string>? WellKnownGuilds { get; init; }
 }
