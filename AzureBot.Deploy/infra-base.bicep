@@ -42,12 +42,7 @@ resource queueServices 'Microsoft.Storage/storageAccounts/queueServices@2021-06-
 }
 
 resource startQueue 'Microsoft.Storage/storageAccounts/queueServices/queues@2021-06-01' = {
-  name: 'start-vm'
-  parent: queueServices
-}
-
-resource stopQueue 'Microsoft.Storage/storageAccounts/queueServices/queues@2021-06-01' = {
-  name: 'stop-vm'
+  name: 'control-vm'
   parent: queueServices
 }
 
