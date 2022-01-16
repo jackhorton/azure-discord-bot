@@ -5,7 +5,7 @@ namespace AzureBot.Bot.Discord;
 
 public record ApplicationCommandOption
 {
-    [JsonPropertyName("string")]
+    [JsonPropertyName("name")]
     public string Name { get; init; }
 
     [JsonPropertyName("type")]

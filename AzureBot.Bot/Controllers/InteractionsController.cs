@@ -54,11 +54,11 @@ public class InteractionsController : ControllerBase
             return Unauthorized();
         }
 
-        var interaction = JsonSerializer.Deserialize<Interaction>(data);
+        var interaction = body.Deserialize<Interaction>();
         return Ok(await HandleInteractionAsync(interaction, cancellationToken));
     }
 
-    public async Task<InteractionCallback> HandleInteractionAsync(Interaction interaction, CancellationToken cancellationToken)
+    private async Task<InteractionCallback> HandleInteractionAsync(Interaction interaction, CancellationToken cancellationToken)
     {
         return interaction switch
         {
@@ -69,7 +69,7 @@ public class InteractionsController : ControllerBase
         };
     }
 
-    public Task<InteractionCallback> HandleAzureBotCommandAsync(Interaction interaction, IReadOnlyCollection<ApplicationCommandOption> options, CancellationToken cancellationToken)
+    private Task<InteractionCallback> HandleAzureBotCommandAsync(Interaction interaction, IReadOnlyCollection<ApplicationCommandOption> options, CancellationToken cancellationToken)
     {
         return options.SingleOrDefault() switch
         {
@@ -78,7 +78,7 @@ public class InteractionsController : ControllerBase
         };
     }
 
-    public Task<InteractionCallback> HandleServerCommandAsync(Interaction interaction, IReadOnlyCollection<ApplicationCommandOption> options, CancellationToken cancellationToken)
+    private Task<InteractionCallback> HandleServerCommandAsync(Interaction interaction, IReadOnlyCollection<ApplicationCommandOption> options, CancellationToken cancellationToken)
     {
         return options.SingleOrDefault() switch
         {
@@ -92,7 +92,7 @@ public class InteractionsController : ControllerBase
     {
         var name = options.Single((opt) => opt.Name == "name" && opt.Type == ApplicationCommandOptionType.String).Value;
 
-        var queue = _queueService.GetQueueClient("vm-control");
+        var queue = _queueService.GetQueueClient("control-vm");
         await queue.SendMessageAsync(
             JsonSerializer.Serialize(new VmControlMessage
             {

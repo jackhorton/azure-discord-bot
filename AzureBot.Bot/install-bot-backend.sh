@@ -21,8 +21,6 @@ apt-get install -y aspnetcore-runtime-6.0
 # Allow `dotnet` to bind to privileged port numbers like 443
 setcap 'cap_net_bind_service=+ep' /usr/share/dotnet/dotnet
 
-systemctl is-active --quiet azurebot && systemctl stop azurebot && systemctl disable azurebot
-
 mkdir -p /var/www/azurebot
 cp -r ./* /var/www/azurebot
 chown --recursive www-data /var/www
@@ -64,7 +62,6 @@ EOM
 mkdir -p /var/log/azurebot
 chown --recursive syslog:adm /var/log/azurebot
 
+systemctl daemon-reload
 systemctl restart rsyslog
-
-systemctl enable azurebot
-systemctl start azurebot
+systemctl restart azurebot
