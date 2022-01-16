@@ -1,9 +1,16 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Azure.Storage.Queues;
+using AzureBot.Bot.Discord;
+using AzureBot.Bot.Queues;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using NSec.Cryptography;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace AzureBot.Bot.Controllers;
 
@@ -13,11 +20,13 @@ public class InteractionsController : ControllerBase
 {
     private readonly SignatureAlgorithm _verificationAlgorithm = SignatureAlgorithm.Ed25519;
     private readonly ILogger<InteractionsController> _logger;
+    private readonly QueueServiceClient _queueService;
     private readonly PublicKey _verificationPublicKey;
 
-    public InteractionsController(ILogger<InteractionsController> logger)
+    public InteractionsController(ILogger<InteractionsController> logger, QueueServiceClient queueService)
     {
         _logger = logger;
+        _queueService = queueService;
         _verificationPublicKey = PublicKey.Import(
             _verificationAlgorithm,
             Convert.FromHexString("265c24669b077eb4b2c5778a04f903025626224d50ae7da2d6537d35bd022651"),
@@ -25,7 +34,7 @@ public class InteractionsController : ControllerBase
     }
 
     [HttpPost]
-    public IActionResult PostAsync([FromBody] JsonDocument body)
+    public async Task<IActionResult> PostAsync([FromBody] JsonDocument body, CancellationToken cancellationToken)
     {
         // Authorizing interactions: https://discord.com/developers/docs/interactions/receiving-and-responding#security-and-authorization
         if (!Request.Headers.TryGetValue("X-Signature-Ed25519", out var sigString))
@@ -45,24 +54,59 @@ public class InteractionsController : ControllerBase
             return Unauthorized();
         }
 
-        if (body.RootElement.GetProperty("type").GetInt32() == 1)
+        var interaction = JsonSerializer.Deserialize<Interaction>(data);
+        return Ok(await HandleInteractionAsync(interaction, cancellationToken));
+    }
+
+    public async Task<InteractionCallback> HandleInteractionAsync(Interaction interaction, CancellationToken cancellationToken)
+    {
+        return interaction switch
         {
-            return Ok(new
-            {
-                type = 1
-            });
-        }
-        else
+            { Type: InteractionType.Ping } => InteractionCallback.Pong(),
+            { Data: { Name: "hello-world" } } => InteractionCallback.Message($"Hello, {interaction.Member.User.Username}"),
+            { Data: { Name: "azurebot" } } azurebot => await HandleAzureBotCommandAsync(interaction, azurebot.Data.Options, cancellationToken),
+            var unknown => throw new Exception($"Unknown root command {unknown?.Data.Name}"),
+        };
+    }
+
+    public Task<InteractionCallback> HandleAzureBotCommandAsync(Interaction interaction, IReadOnlyCollection<ApplicationCommandOption> options, CancellationToken cancellationToken)
+    {
+        return options.SingleOrDefault() switch
         {
-            var memberUsername = body.RootElement.GetProperty("member").GetProperty("user").GetProperty("username").GetString();
-            return Ok(new
+            { Name: "server", Type: ApplicationCommandOptionType.SubCommandGroup} server => HandleServerCommandAsync(interaction, server.Options, cancellationToken),
+            var unknown => throw new Exception($"Unknown `/azurebot` subcommand {unknown?.Name}"),
+        };
+    }
+
+    public Task<InteractionCallback> HandleServerCommandAsync(Interaction interaction, IReadOnlyCollection<ApplicationCommandOption> options, CancellationToken cancellationToken)
+    {
+        return options.SingleOrDefault() switch
+        {
+            { Name: "start", Type: ApplicationCommandOptionType.SubCommand } start => HandleServerControlCommandAsync(interaction, start.Options, VmControlAction.Start, cancellationToken),
+            { Name: "stop", Type: ApplicationCommandOptionType.SubCommand } stop => HandleServerControlCommandAsync(interaction, stop.Options, VmControlAction.Stop, cancellationToken),
+            var unknown => throw new Exception($"Unknown `/azurebot server` subcommand {unknown?.Name}"),
+        };
+    }
+
+    private async Task<InteractionCallback> HandleServerControlCommandAsync(Interaction interaction,  IReadOnlyCollection<ApplicationCommandOption> options, VmControlAction action, CancellationToken cancellationToken)
+    {
+        var name = options.Single((opt) => opt.Name == "name" && opt.Type == ApplicationCommandOptionType.String).Value;
+
+        var queue = _queueService.GetQueueClient("vm-control");
+        await queue.SendMessageAsync(
+            JsonSerializer.Serialize(new VmControlMessage
             {
-                type = 4,
-                data = new
-                {
-                    content = $"Hello, {memberUsername}. Full interaction: {body.RootElement}",
-                }
-            });
-        }
+                FollowupToken = interaction.Token,
+                VmName = name,
+                Action = action,
+            }),
+            cancellationToken);
+
+        return action switch
+        {
+            VmControlAction.Start => InteractionCallback.Message($"Starting VM {name}..."),
+            VmControlAction.Stop => InteractionCallback.Message($"Stopping VM {name}..."),
+            _ => throw new Exception($"Unhandled VM control action {action}"),
+        };
     }
 }

@@ -36,6 +36,21 @@ resource deployContainer 'Microsoft.Storage/storageAccounts/blobServices/contain
   }
 }
 
+resource queueServices 'Microsoft.Storage/storageAccounts/queueServices@2021-06-01' = {
+  name: 'default'
+  parent: storage
+}
+
+resource startQueue 'Microsoft.Storage/storageAccounts/queueServices/queues@2021-06-01' = {
+  name: 'start-vm'
+  parent: queueServices
+}
+
+resource stopQueue 'Microsoft.Storage/storageAccounts/queueServices/queues@2021-06-01' = {
+  name: 'stop-vm'
+  parent: queueServices
+}
+
 resource appInsights 'Microsoft.Insights/components@2020-02-02-preview' = {
   name: 'azurebot-insights'
   location: resourceGroup().location
@@ -257,6 +272,19 @@ resource adminStorageAccountAccessName 'Microsoft.Authorization/roleAssignments@
   properties: {
     roleDefinitionId: storageBlobDataContributor.id
     principalId: adminObjectId
+  }
+}
+
+resource storageQueueDataContributor 'Microsoft.Authorization/roleDefinitions@2018-01-01-preview' existing = {
+  name: '974c5e8b-45b9-4653-ba55-5f855dd0fb88'
+  scope: subscription()
+}
+resource vmStorageQueueDataContributor 'Microsoft.Authorization/roleAssignments@2020-08-01-preview' = {
+  name: guid(vmManagedIdentity.id, storageQueueDataContributor.id, storage.id)
+  scope: storage
+  properties: {
+    principalId: vmManagedIdentity.properties.principalId
+    roleDefinitionId: storageQueueDataContributor.id
   }
 }
 

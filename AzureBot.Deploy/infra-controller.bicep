@@ -19,6 +19,10 @@ var unique = uniqueString(vmName, resourceGroup().id, subscription().id)
 var vnetName = 'azurebot-bot-vnet'
 var subnetName = 'azurebot-bot-subnet'
 
+resource storage 'Microsoft.Storage/storageAccounts@2021-06-01' existing = {
+  name: storageAccountName
+}
+
 resource deployContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2019-06-01' existing = {
   name: '${storageAccountName}/default/deployfiles'
 }
@@ -183,7 +187,7 @@ resource installBotExtension 'Microsoft.Compute/virtualMachines/extensions@2019-
     ]
     protectedSettings: {
       fileUris: botBackendExtensionFiles
-      commandToExecute: './install-bot-backend.sh ${keyVaultName} ${appInsights.properties.ConnectionString}'
+      commandToExecute: './install-bot-backend.sh "${keyVaultName}" "${appInsights.properties.ConnectionString}" "${vmManagedIdentity.properties.clientId}" "${subscription().tenantId}" "${storage.properties.primaryEndpoints.queue}"'
       managedIdentity: {
         clientId: vmManagedIdentity.properties.clientId
       }

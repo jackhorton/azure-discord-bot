@@ -3,7 +3,10 @@
 set -euo pipefail
 
 KEY_VAULT_URL=$1
-AZUREMONITOR__CONNECTIONSSTRING=$2
+AZUREMONITOR_CONNECTIONSTRING=$2
+CLIENT_ID=$3
+TENANT_ID=$4
+QUEUE_URL=$5
 
 curl -Lo /tmp/packages-microsoft-prod.deb https://packages.microsoft.com/config/ubuntu/20.04/packages-microsoft-prod.deb
 dpkg -i /tmp/packages-microsoft-prod.deb
@@ -41,7 +44,10 @@ KillSignal=SIGINT
 User=www-data
 Environment=ASPNETCORE_ENVIRONMENT=Production
 Environment=DOTNET_PRINT_TELEMETRY_MESSAGE=false
-Environment=AZUREMONITOR__CONNECTIONSSTRING=$AZUREMONITOR__CONNECTIONSTRING
+Environment=AZUREMONITOR__CONNECTIONSTRING=${AZUREMONITOR_CONNECTIONSTRING}
+Environment=AZUREBOT__CLIENTID=${CLIENT_ID}
+Environment=AZUREBOT__TENANTID=${TENANT_ID}
+Environment=AZUREBOT__QUEUEURL=${QUEUE_URL}
 Environment=KESTREL__ENDPOINTS__HTTPS__URL=https://0.0.0.0:443
 Environment=KESTREL__ENDPOINTS__HTTPS__CERTIFICATE__PATH=/var/www/${KEY_VAULT_URL}.acme-https-cert
 Environment=KESTREL__ENDPOINTS__HTTPS__CERTIFICATE__KEYPATH=/var/www/${KEY_VAULT_URL}.acme-https-cert

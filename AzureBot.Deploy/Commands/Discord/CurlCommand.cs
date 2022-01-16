@@ -6,6 +6,7 @@ using System;
 using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -15,7 +16,6 @@ internal class CurlCommand : ICommandHandler
 {
     private static readonly Option<InstanceParameter> _instanceOption = new(new[] { "--instance", "-i" }, "The configuration file for the instance for this discord app") { IsRequired = true };
     private static readonly Option<string> _methodOption = new(new[] { "--method", "-X" }, () => "GET", "The HTTP method to use");
-    private static readonly Option<string> _jsonBodyOption = new(new[] { "--json", "-j" }, "The request body in JSON");
     private static readonly Argument<string> _urlArgument = new("url", "The API URL to make the request to");
 
     public static Command GetCommand(IServiceProvider serviceProvider)
@@ -25,7 +25,6 @@ internal class CurlCommand : ICommandHandler
             _urlArgument,
             _instanceOption,
             _methodOption,
-            _jsonBodyOption,
         };
         command.Handler = ActivatorUtilities.CreateInstance<CurlCommand>(serviceProvider);
         return command;
@@ -46,21 +45,21 @@ internal class CurlCommand : ICommandHandler
         var instance = context.ParseResult.GetValueForOption(_instanceOption)!.Instance;
         var url = context.ParseResult.GetValueForArgument(_urlArgument)!;
         var method = context.ParseResult.GetValueForOption(_methodOption)!;
-        var jsonBody = context.ParseResult.GetValueForOption(_jsonBodyOption);
 
         using var req = new HttpRequestMessage(new HttpMethod(method), url);
-        if (method.Equals("GET", StringComparison.InvariantCultureIgnoreCase) && jsonBody is { Length: > 0 })
+        if (method.Equals("GET", StringComparison.InvariantCultureIgnoreCase) && Console.IsInputRedirected)
         {
             throw new Exception();
         }
-        else if (!method.Equals("GET", StringComparison.InvariantCultureIgnoreCase) && jsonBody is not { Length: > 0 })
+        else if (!method.Equals("GET", StringComparison.InvariantCultureIgnoreCase) && !Console.IsInputRedirected)
         {
             throw new Exception();
         }
         
-        if (jsonBody is not null)
+        if (Console.IsInputRedirected)
         {
-            req.Content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+            req.Content = new StreamContent(Console.OpenStandardInput());
+            req.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
         }
 
         using var res = await _discord.SendAsync(instance.Discord, req, cancellationToken);

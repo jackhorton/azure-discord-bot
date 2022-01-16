@@ -6,7 +6,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Program.cs~RF8214423.TMP" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Identity" Version="1.5.0" />
     <PackageReference Include="Azure.Monitor.OpenTelemetry.Exporter" Version="1.0.0-beta.3" />
+    <PackageReference Include="Azure.Storage.Queues" Version="12.8.0" />
     <PackageReference Include="NSec.Cryptography" Version="20.2.0" />
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.0.0-rc8" />
     <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.0.0-rc8" />
