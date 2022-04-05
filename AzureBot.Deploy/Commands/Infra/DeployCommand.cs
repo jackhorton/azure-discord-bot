@@ -1,9 +1,11 @@
-﻿using Azure.Core;
+﻿using Azure;
+using Azure.Core;
 using Azure.ResourceManager;
 using Azure.ResourceManager.Resources;
 using Azure.Security.KeyVault.Secrets;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using AzureBot.Deploy.Acme;
 using AzureBot.Deploy.Configuration;
 using AzureBot.Deploy.Services;
 using CliWrap;
@@ -28,7 +30,7 @@ namespace AzureBot.Deploy.Commands.Infra;
 
 internal class DeployCommand : ICommandHandler
 {
-    private static readonly Option<InstanceParameter> _instanceOption = new(new[] { "--instance", "-i" }, "The configuration file for the instance you are deploying") { IsRequired = true };
+    private static readonly Option<InstanceConfig> _instanceOption = new(new[] { "--instance", "-i" }, InstanceConfig.FromArgument, false, "The configuration file for the instance you are deploying") { IsRequired = true };
 
     public static Command GetCommand(IServiceProvider serviceProvider)
     {
@@ -56,7 +58,7 @@ internal class DeployCommand : ICommandHandler
     public async Task<int> InvokeAsync(InvocationContext context)
     {
         var cancellationToken = context.GetCancellationToken();
-        var instance = context.ParseResult.GetValueForOption(_instanceOption)?.Instance ?? throw new Exception();
+        var instance = context.ParseResult.GetValueForOption(_instanceOption) ?? throw new Exception();
 
         var publishDirectory = await PublishBotAppAsync(cancellationToken);
 
@@ -65,9 +67,9 @@ internal class DeployCommand : ICommandHandler
 
         _logger.LogInformation("Ensuring resource group");
         var rgUpdateOperation = await armClient
-            .GetSubscription(new ResourceIdentifier($"/subscriptions/{instance.SubscriptionId}"))
+            .GetSubscriptionResource(new ResourceIdentifier($"/subscriptions/{instance.SubscriptionId}"))
             .GetResourceGroups()
-            .CreateOrUpdateAsync(instance.ResourceGroupName, new ResourceGroupData(instance.Location), cancellationToken: cancellationToken);
+            .CreateOrUpdateAsync(WaitUntil.Completed, instance.ResourceGroupName, new ResourceGroupData(instance.Location), cancellationToken: cancellationToken);
         await rgUpdateOperation.WaitForCompletionAsync();
 
         var baseDeployment = await _armDeployment.DeployLocalTemplateAsync(
@@ -86,7 +88,7 @@ internal class DeployCommand : ICommandHandler
             resourceGroupId,
             cancellationToken);
 
-        var baseOutputs = JsonSerializer.SerializeToElement(baseDeployment.Outputs);
+        var baseOutputs = JsonDocument.Parse(baseDeployment.Outputs.ToString()).RootElement;
 
         var fileUrls = await GetExtensionFilesAsync(baseOutputs, publishDirectory, cancellationToken).ToArrayAsync(cancellationToken);
 
@@ -115,7 +117,8 @@ internal class DeployCommand : ICommandHandler
         }
 
         var certUrl = await _acmeCertificateGenerator.GenerateHttpsCertificateAsync(
-            instance.Domain, instance.ControllerName, instance.Https.Email, instance.Https.Directory, kvUrl, resourceGroupId, cancellationToken);
+            new AcmeOptions(instance.Domain, instance.ControllerName, instance.Https.Email, instance.Https.Directory, kvUrl, resourceGroupId, AcmeCertificateFormat.Pem, Array.Empty<string>()),
+            cancellationToken);
 
         await _armDeployment.DeployLocalTemplateAsync(
             "infra-controller",

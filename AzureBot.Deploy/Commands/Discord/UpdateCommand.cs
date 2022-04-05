@@ -14,7 +14,7 @@ namespace AzureBot.Deploy.Commands.Discord;
 
 internal class UpdateCommand : ICommandHandler
 {
-    private static readonly Option<InstanceParameter> _instanceOption = new(new[] { "--instance", "-i" }, "The configuration file for the instance you are deploying") { IsRequired = true };
+    private static readonly Option<InstanceConfig> _instanceOption = new(new[] { "--instance", "-i" }, InstanceConfig.FromArgument, false, "The configuration file for the instance you are deploying") { IsRequired = true };
     private static readonly Option<string> _commandNameOption = new(new[] { "--name", "-n" }, "The command to update") { IsRequired = true };
     private static readonly Option<string> _guildNameOption = new(
         new[] { "--guild-name", "-g" },
@@ -103,7 +103,7 @@ internal class UpdateCommand : ICommandHandler
     public async Task<int> InvokeAsync(InvocationContext context)
     {
         var cancellationToken = context.GetCancellationToken();
-        var instance = context.ParseResult.GetValueForOption(_instanceOption)!.Instance;
+        var instance = context.ParseResult.GetValueForOption(_instanceOption)!;
         var name = context.ParseResult.GetValueForOption(_commandNameOption)!;
         var guildName = context.ParseResult.GetValueForOption(_guildNameOption);
 

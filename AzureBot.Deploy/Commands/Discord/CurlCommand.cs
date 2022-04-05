@@ -14,7 +14,7 @@ namespace AzureBot.Deploy.Commands.Discord;
 
 internal class CurlCommand : ICommandHandler
 {
-    private static readonly Option<InstanceParameter> _instanceOption = new(new[] { "--instance", "-i" }, "The configuration file for the instance for this discord app") { IsRequired = true };
+    private static readonly Option<InstanceConfig> _instanceOption = new(new[] { "--instance", "-i" }, InstanceConfig.FromArgument, false, "The configuration file for the instance for this discord app") { IsRequired = true };
     private static readonly Option<string> _methodOption = new(new[] { "--method", "-X" }, () => "GET", "The HTTP method to use");
     private static readonly Argument<string> _urlArgument = new("url", "The API URL to make the request to");
 
@@ -42,7 +42,7 @@ internal class CurlCommand : ICommandHandler
     public async Task<int> InvokeAsync(InvocationContext context)
     {
         var cancellationToken = context.GetCancellationToken();
-        var instance = context.ParseResult.GetValueForOption(_instanceOption)!.Instance;
+        var instance = context.ParseResult.GetValueForOption(_instanceOption)!;
         var url = context.ParseResult.GetValueForArgument(_urlArgument)!;
         var method = context.ParseResult.GetValueForOption(_methodOption)!;
 

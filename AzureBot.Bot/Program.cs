@@ -6,6 +6,7 @@ using AzureBot.Bot.Configuration;
 using AzureBot.Bot.Telemetry;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
@@ -44,6 +45,12 @@ builder.Services.AddSingleton<QueueServiceClient>((sp) =>
     var appOptions = sp.GetRequiredService<IOptionsMonitor<AzureBotOptions>>().CurrentValue;
     var credentials = sp.GetRequiredService<TokenCredential>();
     return new QueueServiceClient(new Uri(appOptions.QueueUrl), credentials);
+});
+builder.Services.AddSingleton<CosmosClient>((sp) =>
+{
+    var appOptions = sp.GetRequiredService<IOptionsMonitor<AzureBotOptions>>().CurrentValue;
+    var credentials = sp.GetRequiredService<TokenCredential>();
+    return new CosmosClient(appOptions.CosmosUrl, credentials);
 });
 builder.Services.AddSingleton<ActivityManager>();
 

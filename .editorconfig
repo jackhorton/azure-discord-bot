@@ -88,7 +88,7 @@ dotnet_style_require_accessibility_modifiers = never:suggestion
 #Style - Modifier preferences
 
 #when this rule is set to a list of modifiers, prefer the specified ordering.
-csharp_preferred_modifier_order = public,private,internal,static,async,readonly:suggestion
+csharp_preferred_modifier_order = public,private,internal,protected,override,static,async,readonly:warning
 
 # Azurebot-specific c# rules
 [*.cs]

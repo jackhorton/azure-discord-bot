@@ -4,13 +4,15 @@ param adminObjectId string
 @description('The domain name to link this deployment to')
 param dnsZoneName string
 
+param location string = resourceGroup().location
+
 var unique = uniqueString(resourceGroup().id, subscription().id)
 var vnetName = 'azurebot-bot-vnet'
 var subnetName = 'azurebot-bot-subnet'
 
 resource storage 'Microsoft.Storage/storageAccounts@2019-06-01' = {
   name: 'azurebot${unique}'
-  location: resourceGroup().location
+  location: location
   sku: {
     name: 'Standard_LRS'
   }
@@ -48,7 +50,7 @@ resource startQueue 'Microsoft.Storage/storageAccounts/queueServices/queues@2021
 
 resource appInsights 'Microsoft.Insights/components@2020-02-02-preview' = {
   name: 'azurebot-insights'
-  location: resourceGroup().location
+  location: location
   kind: 'web'
   properties: {
     Application_Type: 'web'
@@ -58,13 +60,13 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02-preview' = {
 
 resource workspace 'Microsoft.OperationalInsights/workspaces@2020-03-01-preview' = {
   name: 'azurebot-workspace'
-  location: resourceGroup().location
+  location: location
   properties: {}
 }
 
 resource syslogDcr 'Microsoft.Insights/dataCollectionRules@2021-04-01' = {
   name: 'bot-syslog-dcr'
-  location: resourceGroup().location
+  location: location
   kind: 'Linux'
   properties: {
     dataSources: {
@@ -112,7 +114,7 @@ resource syslogDcr 'Microsoft.Insights/dataCollectionRules@2021-04-01' = {
 
 resource keyVault 'Microsoft.KeyVault/vaults@2019-09-01' = {
   name: 'azurebot-kv${unique}'
-  location: resourceGroup().location
+  location: location
   properties: {
     sku: {
       family: 'A'
@@ -127,6 +129,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2019-09-01' = {
 
 resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2021-03-15' = {
   name: 'azurebot-cosmos${unique}'
+#disable-next-line no-hardcoded-location
   location: 'southcentralus'
   kind: 'GlobalDocumentDB'
   properties: {
@@ -169,22 +172,50 @@ resource sqlContainerName 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/co
       id: 'servers'
       partitionKey: {
         paths: [
-          '/ResourceId'
+          '/GuildId'
         ]
         kind: 'Hash'
+      }
+      uniqueKeyPolicy: {
+        uniqueKeys: [
+          {
+            paths: [
+              '/GuildId'
+              '/Name'
+            ]
+          }
+          {
+            paths: [
+              '/ResourceId'
+            ]
+          }
+        ]
       }
       indexingPolicy: {
         indexingMode: 'consistent'
       }
     }
-    options: {}
   }
 }
 
+resource cosmosDataContributor 'Microsoft.DocumentDB/databaseAccounts/sqlRoleDefinitions@2021-10-15' existing = {
+  name: '00000000-0000-0000-0000-000000000002'
+  parent: cosmosAccount
+}
+
+resource vmCosmosDataContributor 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2021-10-15' = {
+  name: guid(vmManagedIdentity.id, cosmosDataContributor.id, cosmosAccount.id)
+  parent: cosmosAccount
+  properties: {
+    principalId: vmManagedIdentity.properties.principalId
+    roleDefinitionId: cosmosDataContributor.id
+    scope: cosmosAccount.id
+  }
+}
 
 resource nsg 'Microsoft.Network/networkSecurityGroups@2020-06-01' = {
   name: 'azurebot-bot-nsg'
-  location: resourceGroup().location
+  location: location
   properties: {
     securityRules: [
       {
@@ -232,7 +263,7 @@ resource nsg 'Microsoft.Network/networkSecurityGroups@2020-06-01' = {
 
 resource vnet 'Microsoft.Network/virtualNetworks@2020-06-01' = {
   name: vnetName
-  location: resourceGroup().location
+  location: location
   properties: {
     addressSpace: {
       addressPrefixes: [
@@ -254,7 +285,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2020-06-01' = {
 
 resource vmManagedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2018-11-30' = {
   name: 'azurebot-bot-identity'
-  location: resourceGroup().location
+  location: location
 }
 
 resource storageBlobDataContributor 'Microsoft.Authorization/roleDefinitions@2018-01-01-preview' existing = {

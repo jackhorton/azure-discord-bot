@@ -12,4 +12,7 @@ public record AzureBotOptions
 
     [Required]
     public string QueueUrl { get; init; }
+
+    [Required]
+    public string CosmosUrl { get; init; }
 }

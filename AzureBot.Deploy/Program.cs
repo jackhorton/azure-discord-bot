@@ -1,5 +1,6 @@
 ﻿using Azure.Core;
 using Azure.Identity;
+using AzureBot.Deploy.Acme;
 using AzureBot.Deploy.Commands.Discord;
 using AzureBot.Deploy.Commands.Infra;
 using AzureBot.Deploy.Services;

@@ -1,19 +1,19 @@
 ﻿using Azure;
 using Azure.Core;
-using Azure.ResourceManager;
 using Azure.Security.KeyVault.Certificates;
 using Azure.Security.KeyVault.Secrets;
+using AzureBot.Deploy.Services;
 using Certes;
-using Certes.Pkcs;
+using Certes.Acme;
 using DnsClient;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace AzureBot.Deploy.Services;
+namespace AzureBot.Deploy.Acme;
 
 internal class AcmeCertificateGenerator
 {
@@ -30,22 +30,19 @@ internal class AcmeCertificateGenerator
         _armDeployment = armDeployment;
     }
 
+    private record DnsChallenge(IChallengeContext Challenge, string FullDnsName, string RecordName);
+
     public async virtual Task<Uri> GenerateHttpsCertificateAsync(
-        string zoneName,
-        string subdomain,
-        string accountEmail,
-        Uri acmeDirectoryUrl,
-        Uri keyVaultUrl,
-        ResourceIdentifier resourceGroupId,
+        AcmeOptions options,
         CancellationToken cancellationToken)
     {
         const string certName = "acme-https-cert";
-        var certs = new CertificateClient(keyVaultUrl, _credential);
+        var certs = new CertificateClient(options.KeyVaultUrl, _credential);
         try
         {
             var cert = await certs.GetCertificateAsync(certName, cancellationToken);
             var thumbprint = Convert.ToHexString(cert.Value.Properties.X509Thumbprint);
-            if (cert.Value.Properties.ExpiresOn > DateTimeOffset.UtcNow.AddDays(30))
+            if (cert.Value.Properties.ExpiresOn > DateTimeOffset.UtcNow.AddDays(30) && (cert.Value.Properties.Enabled ?? false))
             {
                 _logger.LogInformation("Existing valid HTTPS certificate has been found with thumbprint {}", thumbprint);
                 return cert.Value.SecretId;
@@ -62,31 +59,47 @@ internal class AcmeCertificateGenerator
         AcmeContext acme;
         try
         {
-            var secrets = new SecretClient(keyVaultUrl, _credential);
+            var secrets = new SecretClient(options.KeyVaultUrl, _credential);
             var accountKey = await secrets.GetSecretAsync(accountKeySecretName, cancellationToken: cancellationToken);
-            acme = new AcmeContext(acmeDirectoryUrl, KeyFactory.FromPem(accountKey.Value.Value));
+            acme = new AcmeContext(options.DirectoryUrl, KeyFactory.FromPem(accountKey.Value.Value));
             _logger.LogDebug("Found existing ACME account");
         }
         catch
         {
-            _logger.LogInformation("Creating new ACME account at {} with email {}", acmeDirectoryUrl, accountEmail);
-            acme = new AcmeContext(acmeDirectoryUrl);
-            await acme.NewAccount(accountEmail, termsOfServiceAgreed: true);
+            _logger.LogInformation("Creating new ACME account at {} with email {}", options.DirectoryUrl, options.AccountEmail);
+            acme = new AcmeContext(options.DirectoryUrl);
+            await acme.NewAccount(options.AccountEmail, termsOfServiceAgreed: true);
         }
 
         string orderIdentifier;
-        if (subdomain is { Length: > 0 })
+        string acmeChallengeRecord;
+        if (options.Subdomain is { Length: > 0 })
         {
-            orderIdentifier = $"{subdomain}.{zoneName}";
+            orderIdentifier = $"{options.Subdomain}.{options.ZoneName}";
+            acmeChallengeRecord = $"_acme-challenge.{options.Subdomain}";
         }
         else
         {
-            orderIdentifier = zoneName;
+            orderIdentifier = options.ZoneName;
+            acmeChallengeRecord = "_acme-challenge";
         }
-        var order = await acme.NewOrder(new[] { orderIdentifier });
+        var order = await acme.NewOrder((new[] { orderIdentifier }).Concat(options.AlternateNames).ToArray());
+
         var authorizations = await order.Authorizations();
-        var dnsChallenge = await authorizations.Single().Dns();
-        var dnsText = acme.AccountKey.DnsTxt(dnsChallenge.Token);
+        var dnsChallenges = new List<DnsChallenge>();
+        foreach (var auth in authorizations)
+        {
+            var challenge = await auth.Dns();
+            var resource = await auth.Resource();
+            if (!resource.Identifier.Value.EndsWith(options.ZoneName))
+            {
+                throw new Exception($"Challenge presented for {resource.Identifier.Value}, which is outside of root domain {options.ZoneName}");
+            }
+
+            var fullAcmeChallengeUrl = $"_acme-challenge.{resource.Identifier.Value}";
+            var recordName = fullAcmeChallengeUrl[..^(options.ZoneName.Length + 1)];
+            dnsChallenges.Add(new DnsChallenge(challenge, fullAcmeChallengeUrl, recordName));
+        }
 
         await _armDeployment.DeployLocalTemplateAsync(
             "acme-challenge",
@@ -94,7 +107,7 @@ internal class AcmeCertificateGenerator
             {
                 keyVaultName = new
                 {
-                    value = keyVaultUrl.Host.Split('.').First(),
+                    value = options.KeyVaultUrl.Host.Split('.').First(),
                 },
                 accountKey = new
                 {
@@ -102,28 +115,28 @@ internal class AcmeCertificateGenerator
                 },
                 dnsZoneName = new
                 {
-                    value = zoneName,
+                    value = options.ZoneName,
                 },
-                challengeRecordContent = new
+                challenges = new
                 {
-                    value = dnsText,
-                },
-                recordName = new
-                {
-                    value = $"_acme-challenge.{subdomain}",
-                },
+                    value = dnsChallenges.Select((challenge) => new Dictionary<string, string>
+                    {
+                        ["name"] = challenge.RecordName,
+                        ["text"] = acme.AccountKey.DnsTxt(challenge.Challenge.Token),
+                    }),
+                }
             },
-            resourceGroupId,
+            options.ResourceGroupId,
             cancellationToken);
 
-        _logger.LogInformation("Waiting up to 30 minutes for DNS challenge to propagate");
+        _logger.LogInformation("Waiting up to 5 minutes for DNS challenge to propagate");
         var propagationTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        propagationTimeout.CancelAfter(TimeSpan.FromMinutes(30));
+        propagationTimeout.CancelAfter(TimeSpan.FromMinutes(5));
         while (!propagationTimeout.IsCancellationRequested)
         {
             await Task.Delay(TimeSpan.FromSeconds(30), propagationTimeout.Token);
-            var result = await _lookupClient.QueryAsync($"_acme-challenge.{subdomain}.{zoneName}", QueryType.TXT, cancellationToken: propagationTimeout.Token);
-            if (result.Answers.TxtRecords().Any((txt) => txt.Text.FirstOrDefault() == dnsText))
+            var result = await _lookupClient.QueryAsync(dnsChallenges.First().FullDnsName, QueryType.TXT, cancellationToken: propagationTimeout.Token);
+            if (result.Answers.TxtRecords().Any((txt) => txt.Text.FirstOrDefault() == acme.AccountKey.DnsTxt(dnsChallenges.First().Challenge.Token)))
             {
                 break;
             }
@@ -133,15 +146,24 @@ internal class AcmeCertificateGenerator
         _logger.LogInformation("The DNS challenge record has been found locally. Waiting an additional 5 minutes so that the ACME directory is more likely to also observe the DNS challenge");
         await Task.Delay(TimeSpan.FromMinutes(5), cancellationToken);
 
-        _logger.LogInformation("Validating DNS challenge");
-        await dnsChallenge.Validate();
+        _logger.LogInformation("Validating DNS challenge(s)");
+        foreach (var challenge in dnsChallenges)
+        {
+            await challenge.Challenge.Validate();
+        }
 
         _logger.LogInformation("Generating a CSR from key vault");
+        var sans = new SubjectAlternativeNames();
+        sans.DnsNames.Add(orderIdentifier);
+        foreach (var san in options.AlternateNames)
+        {
+            sans.DnsNames.Add(san);
+        }
         var keyVaultCertOperation = await certs.StartCreateCertificateAsync(
             certName,
-            new CertificatePolicy(WellKnownIssuerNames.Unknown, $"CN={orderIdentifier}")
+            new CertificatePolicy(WellKnownIssuerNames.Unknown, $"CN={orderIdentifier}", sans)
             {
-                ContentType = CertificateContentType.Pem,
+                ContentType = options.Format == AcmeCertificateFormat.Pkcs12 ? CertificateContentType.Pkcs12 : CertificateContentType.Pem,
                 KeyType = CertificateKeyType.Rsa,
                 Exportable = true,
                 ValidityInMonths = 3,

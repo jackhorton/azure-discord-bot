@@ -15,6 +15,8 @@ param httpsCertUrl string
 
 param keyVaultName string
 
+param location string = resourceGroup().location
+
 var unique = uniqueString(vmName, resourceGroup().id, subscription().id)
 var vnetName = 'azurebot-bot-vnet'
 var subnetName = 'azurebot-bot-subnet'
@@ -49,7 +51,7 @@ resource syslogDcr 'Microsoft.Insights/dataCollectionRules@2021-04-01' existing 
 
 resource nic 'Microsoft.Network/networkInterfaces@2020-06-01' = {
   name: '${vmName}-nic'
-  location: resourceGroup().location
+  location: location
   properties: {
     ipConfigurations: [
       {
@@ -73,7 +75,7 @@ resource nic 'Microsoft.Network/networkInterfaces@2020-06-01' = {
 
 resource ipAddress 'Microsoft.Network/publicIPAddresses@2021-05-01' = {
   name: '${vmName}-ip'
-  location: resourceGroup().location
+  location: location
   sku: {
     name: 'Basic'
   }
@@ -93,7 +95,7 @@ resource vmManagedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@201
 
 resource vm 'Microsoft.Compute/virtualMachines@2021-07-01' = {
   name: vmName
-  location: resourceGroup().location
+  location: location
   properties: {
     hardwareProfile: {
       vmSize: 'Standard_B1s'
@@ -175,7 +177,7 @@ resource workspaceAccess 'Microsoft.Authorization/roleAssignments@2020-08-01-pre
 resource installBotExtension 'Microsoft.Compute/virtualMachines/extensions@2019-07-01' = {
   parent: vm
   name: 'DeployAzurebot'
-  location: resourceGroup().location
+  location: location
   properties: {
     publisher: 'Microsoft.Azure.Extensions'
     type: 'CustomScript'
@@ -201,7 +203,7 @@ resource installBotExtension 'Microsoft.Compute/virtualMachines/extensions@2019-
 
 resource httpsExtension 'Microsoft.Compute/virtualMachines/extensions@2021-07-01' = {
   name: 'InstallHttpsCert'
-  location: resourceGroup().location
+  location: location
   parent: vm
   properties: {
     publisher: 'Microsoft.Azure.KeyVault'
@@ -226,7 +228,7 @@ resource httpsExtension 'Microsoft.Compute/virtualMachines/extensions@2021-07-01
 resource monitorExtension 'Microsoft.Compute/virtualMachines/extensions@2021-07-01' = {
   name: 'AzureMonitor'
   parent: vm
-  location: resourceGroup().location
+  location: location
   properties: {
     publisher: 'Microsoft.Azure.Monitor'
     type: 'AzureMonitorLinuxAgent'

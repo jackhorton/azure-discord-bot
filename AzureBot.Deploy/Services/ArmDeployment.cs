@@ -1,4 +1,5 @@
-﻿using Azure.Core;
+﻿using Azure;
+using Azure.Core;
 using Azure.ResourceManager;
 using Azure.ResourceManager.Resources;
 using Azure.ResourceManager.Resources.Models;
@@ -23,28 +24,28 @@ internal class ArmDeployment
         _logger = logger;
     }
 
-    public async virtual Task<DeploymentPropertiesExtended> DeployLocalTemplateAsync<TParameters>(
+    public async virtual Task<ArmDeploymentPropertiesExtended> DeployLocalTemplateAsync<TParameters>(
         string templateName,
         TParameters parameters,
         ResourceIdentifier scope,
         CancellationToken cancellationToken)
     {
         var armClient = new ArmClient(_credential);
-        var rgClient = armClient.GetResourceGroup(scope);
+        var rgClient = armClient.GetResourceGroupResource(scope);
 
         var template = File.ReadAllText(Path.Combine(Assembly.GetExecutingAssembly().Location, "..", templateName + ".json"));
-        var props = new DeploymentProperties(DeploymentMode.Incremental)
+        var props = new ArmDeploymentProperties(ArmDeploymentMode.Incremental)
         {
-            Template = JsonDocument.Parse(template).RootElement,
-            Parameters = JsonSerializer.SerializeToElement(parameters),
+            Template = BinaryData.FromString(template),
+            Parameters = BinaryData.FromObjectAsJson(parameters),
         };
 
         _logger.LogInformation("Beginning deployment of {}.json", templateName);
-        var deploymentOperation = await rgClient.GetDeployments().CreateOrUpdateAsync(templateName, new DeploymentInput(props), cancellationToken: cancellationToken);
+        var deploymentOperation = await rgClient.GetArmDeployments().CreateOrUpdateAsync(WaitUntil.Completed, templateName, new ArmDeploymentInput(props), cancellationToken: cancellationToken);
         var deployment = await deploymentOperation.WaitForCompletionAsync(cancellationToken);
 
         var result = deployment.Value.Data.Properties;
-        if (result.ProvisioningState != ProvisioningState.Succeeded)
+        if (result.ProvisioningState != ResourcesProvisioningState.Succeeded)
         {
             throw new Exception();
         }

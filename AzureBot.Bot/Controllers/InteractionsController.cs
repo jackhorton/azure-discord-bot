@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using NSec.Cryptography;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
@@ -73,7 +74,7 @@ public class InteractionsController : ControllerBase
     {
         return options.SingleOrDefault() switch
         {
-            { Name: "server", Type: ApplicationCommandOptionType.SubCommandGroup} server => HandleServerCommandAsync(interaction, server.Options, cancellationToken),
+            { Name: "server", Type: ApplicationCommandOptionType.SubCommandGroup } server => HandleServerCommandAsync(interaction, server.Options, cancellationToken),
             var unknown => throw new Exception($"Unknown `/azurebot` subcommand {unknown?.Name}"),
         };
     }
@@ -88,17 +89,18 @@ public class InteractionsController : ControllerBase
         };
     }
 
-    private async Task<InteractionCallback> HandleServerControlCommandAsync(Interaction interaction,  IReadOnlyCollection<ApplicationCommandOption> options, VmControlAction action, CancellationToken cancellationToken)
+    private async Task<InteractionCallback> HandleServerControlCommandAsync(Interaction interaction, IReadOnlyCollection<ApplicationCommandOption> options, VmControlAction action, CancellationToken cancellationToken)
     {
         var name = options.Single((opt) => opt.Name == "name" && opt.Type == ApplicationCommandOptionType.String).Value;
 
         var queue = _queueService.GetQueueClient("control-vm");
         await queue.SendMessageAsync(
-            JsonSerializer.Serialize(new VmControlMessage
+            JsonSerializer.Serialize(new
             {
                 FollowupToken = interaction.Token,
                 VmName = name,
                 Action = action,
+                TraceParent = Activity.Current.Id,
             }),
             cancellationToken);
 

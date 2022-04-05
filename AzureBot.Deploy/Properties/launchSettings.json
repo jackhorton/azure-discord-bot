@@ -7,7 +7,16 @@
     },
     "gen-cert prod": {
       "commandName": "Project",
-      "commandLineArgs": "gen-cert --instance ..\\..\\..\\Instances\\prod.json",
+      "commandLineArgs": "infra gen-cert --instance ..\\..\\..\\Instances\\prod.json",
+      "workingDirectory": "$(ProjectDirectory)"
+    },
+    "gen-cert emilyandjack.com": {
+      "commandName": "Project",
+      "commandLineArgs": "infra gen-cert --domain emilyandjack.com --email jackpeterhorton@gmail.com --key-vault-url https://emilyandjack-kv.vault.azure.net --resource-group /subscriptions/35dca76c-bba7-43de-a4a2-b3144f88d5ba/resourceGroups/wedding --format pkcs12 --san www.emilyandjack.com"
+    },
+    "infra prod": {
+      "commandName": "Project",
+      "commandLineArgs": "infra deploy --instance ..\\..\\..\\Instances\\prod.json",
       "workingDirectory": "$(ProjectDirectory)"
     }
   }
