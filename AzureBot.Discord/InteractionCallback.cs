@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace AzureBot.Bot.Discord;
+namespace AzureBot.Discord;
 
 public record InteractionCallback
 {
@@ -8,7 +8,7 @@ public record InteractionCallback
     public InteractionCallbackType Type { get; init; }
 
     [JsonPropertyName("data")]
-    public InteractionCallbackData Data { get; init; }
+    public InteractionCallbackData? Data { get; init; }
 
     public static InteractionCallback Pong()
     {
@@ -23,7 +23,7 @@ public record InteractionCallback
         return new InteractionCallback
         {
             Type = InteractionCallbackType.ChannelMessageWithSource,
-            Data = new InteractionCallbackData { Content = content },
+            Data = new InteractionCallbackData(content),
         };
     }
 }

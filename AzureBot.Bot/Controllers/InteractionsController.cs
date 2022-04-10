@@ -1,7 +1,9 @@
 ﻿using Azure.Storage.Queues;
-using AzureBot.Bot.Discord;
+using AzureBot.Bot.Cosmos;
 using AzureBot.Bot.Queues;
+using AzureBot.Discord;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Logging;
 using NSec.Cryptography;
 using System;
@@ -22,12 +24,14 @@ public class InteractionsController : ControllerBase
     private readonly SignatureAlgorithm _verificationAlgorithm = SignatureAlgorithm.Ed25519;
     private readonly ILogger<InteractionsController> _logger;
     private readonly QueueServiceClient _queueService;
+    private readonly Container _serversContainer;
     private readonly PublicKey _verificationPublicKey;
 
-    public InteractionsController(ILogger<InteractionsController> logger, QueueServiceClient queueService)
+    public InteractionsController(ILogger<InteractionsController> logger, QueueServiceClient queueService, CosmosClient cosmosClient)
     {
         _logger = logger;
         _queueService = queueService;
+        _serversContainer = cosmosClient.GetContainer("botdb", "servers");
         _verificationPublicKey = PublicKey.Import(
             _verificationAlgorithm,
             Convert.FromHexString("265c24669b077eb4b2c5778a04f903025626224d50ae7da2d6537d35bd022651"),
@@ -55,7 +59,7 @@ public class InteractionsController : ControllerBase
             return Unauthorized();
         }
 
-        var interaction = body.Deserialize<Interaction>();
+        var interaction = body.Deserialize<Interaction>() ?? throw new ArgumentException("Interaction body must not be null", nameof(body));
         return Ok(await HandleInteractionAsync(interaction, cancellationToken));
     }
 
@@ -64,8 +68,8 @@ public class InteractionsController : ControllerBase
         return interaction switch
         {
             { Type: InteractionType.Ping } => InteractionCallback.Pong(),
-            { Data: { Name: "hello-world" } } => InteractionCallback.Message($"Hello, {interaction.Member.User.Username}"),
-            { Data: { Name: "azurebot" } } azurebot => await HandleAzureBotCommandAsync(interaction, azurebot.Data.Options, cancellationToken),
+            { Data.Name: "hello-world" } => InteractionCallback.Message($"Hello, {interaction.Member.User.Username}"),
+            { Data.Name: "azurebot" } azurebot => await HandleAzureBotCommandAsync(interaction, azurebot.Data.Options, cancellationToken),
             var unknown => throw new Exception($"Unknown root command {unknown?.Data.Name}"),
         };
     }
@@ -92,7 +96,7 @@ public class InteractionsController : ControllerBase
     private async Task<InteractionCallback> HandleServerControlCommandAsync(Interaction interaction, IReadOnlyCollection<ApplicationCommandOption> options, VmControlAction action, CancellationToken cancellationToken)
     {
         var name = options.Single((opt) => opt.Name == "name" && opt.Type == ApplicationCommandOptionType.String).Value;
-
+        var server = await _serversContainer.ReadItemAsync<GameServer>(interaction.GuildId, new PartitionKey(interaction.GuildId), cancellationToken: cancellationToken);
         var queue = _queueService.GetQueueClient("control-vm");
         await queue.SendMessageAsync(
             JsonSerializer.Serialize(new
@@ -100,7 +104,7 @@ public class InteractionsController : ControllerBase
                 FollowupToken = interaction.Token,
                 VmName = name,
                 Action = action,
-                TraceParent = Activity.Current.Id,
+                TraceParent = Activity.Current?.Id,
             }),
             cancellationToken);
 

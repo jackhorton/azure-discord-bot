@@ -5,14 +5,14 @@ namespace AzureBot.Bot.Configuration;
 public record AzureBotOptions
 {
     [Required]
-    public string ClientId { get; init; }
+    public string ClientId { get; init; } = default!;
 
     [Required]
-    public string TenantId { get; init; }
+    public string TenantId { get; init; } = default!;
 
     [Required]
-    public string QueueUrl { get; init; }
+    public string QueueUrl { get; init; } = default!;
 
     [Required]
-    public string CosmosUrl { get; init; }
+    public string CosmosUrl { get; init; } = default!;
 }

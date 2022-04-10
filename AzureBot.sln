@@ -13,6 +13,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureBot.Bot", "AzureBot.Bot\AzureBot.Bot.csproj", "{7571B1E0-4FED-4041-B374-29F56BF5EC69}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureBot.Discord", "AzureBot.Discord\AzureBot.Discord.csproj", "{478CDCCA-AB2D-443F-ABBA-7543422331AB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -47,6 +49,18 @@ Global
 		{7571B1E0-4FED-4041-B374-29F56BF5EC69}.Release|x64.Build.0 = Release|Any CPU
 		{7571B1E0-4FED-4041-B374-29F56BF5EC69}.Release|x86.ActiveCfg = Release|Any CPU
 		{7571B1E0-4FED-4041-B374-29F56BF5EC69}.Release|x86.Build.0 = Release|Any CPU
+		{478CDCCA-AB2D-443F-ABBA-7543422331AB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{478CDCCA-AB2D-443F-ABBA-7543422331AB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{478CDCCA-AB2D-443F-ABBA-7543422331AB}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{478CDCCA-AB2D-443F-ABBA-7543422331AB}.Debug|x64.Build.0 = Debug|Any CPU
+		{478CDCCA-AB2D-443F-ABBA-7543422331AB}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{478CDCCA-AB2D-443F-ABBA-7543422331AB}.Debug|x86.Build.0 = Debug|Any CPU
+		{478CDCCA-AB2D-443F-ABBA-7543422331AB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{478CDCCA-AB2D-443F-ABBA-7543422331AB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{478CDCCA-AB2D-443F-ABBA-7543422331AB}.Release|x64.ActiveCfg = Release|Any CPU
+		{478CDCCA-AB2D-443F-ABBA-7543422331AB}.Release|x64.Build.0 = Release|Any CPU
+		{478CDCCA-AB2D-443F-ABBA-7543422331AB}.Release|x86.ActiveCfg = Release|Any CPU
+		{478CDCCA-AB2D-443F-ABBA-7543422331AB}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,6 +1,6 @@
 ﻿using Azure.Storage.Queues;
-using AzureBot.Bot.Discord;
 using AzureBot.Bot.Telemetry;
+using AzureBot.Discord;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -20,14 +20,7 @@ public class VmControlHandler : BackgroundService
     private readonly Container _serversContainer;
     private readonly QueueClient _queue;
 
-    private record Message
-    {
-        public string FollowupToken { get; init; }
-        public string GuildId { get; init; }
-        public string VmName { get; init; }
-        public VmControlAction Action { get; init; }
-        public string TraceParent { get; init; }
-    }
+    private record Message(string FollowupToken, string GuildId, string VmName, VmControlAction Action, string TraceParent);
 
     public VmControlHandler(ILogger<VmControlHandler> logger, QueueServiceClient queueService, ActivityManager activityManager, CosmosClient cosmos)
     {
@@ -51,7 +44,7 @@ public class VmControlHandler : BackgroundService
                     continue;
                 }
 
-                message = JsonSerializer.Deserialize<Message>(queueMessage.Value.Body);
+                message = JsonSerializer.Deserialize<Message>(queueMessage.Value.Body)!;
             }
             catch (Exception ex)
             {
@@ -68,13 +61,7 @@ public class VmControlHandler : BackgroundService
     public Task SendAsync(Interaction interaction, string vmName, VmControlAction action, CancellationToken cancellationToken)
     {
         return _queue.SendMessageAsync(
-            JsonSerializer.Serialize(new Message
-            {
-                FollowupToken = interaction.Token,
-                VmName = vmName,
-                Action = action,
-                TraceParent = Activity.Current.Id,
-            }),
+            JsonSerializer.Serialize(new Message(interaction.Token, interaction.GuildId, vmName, action, Activity.Current?.Id ?? "")),
             cancellationToken);
     }
 }

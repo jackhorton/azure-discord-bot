@@ -1,4 +1,4 @@
-﻿namespace AzureBot.Bot.Discord;
+﻿namespace AzureBot.Discord;
 
 public enum ApplicationCommandType
 {
