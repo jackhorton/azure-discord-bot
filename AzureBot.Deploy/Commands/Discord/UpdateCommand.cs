@@ -1,13 +1,12 @@
 ﻿using AzureBot.Deploy.Configuration;
-using AzureBot.Deploy.Services;
+using AzureBot.Discord;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
+using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.Linq;
-using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Threading.Tasks;
 
 namespace AzureBot.Deploy.Commands.Discord;
@@ -32,72 +31,55 @@ internal class UpdateCommand : ICommandHandler
         return command;
     }
 
-    private readonly JsonObject _commands = new()
+    private readonly Dictionary<string, ApplicationCommand> _appCommands = new()
     {
-        ["hello-world"] = new JsonObject
+        ["hello-world"] = new("hello-world", "A basic command"),
+        ["azurebot"] = new("azurebot", "Commands for working with AzureBot")
         {
-            ["name"] = "hello-world",
-            ["description"] = "A basic command",
-            ["type"] = 1, // CHAT_INPUT
-        },
-        ["azurebot"] = new JsonObject
-        {
-            ["name"] = "azurebot",
-            ["description"] = "Commands for working with AzureBot",
-            ["type"] = 1, // CHAT_INPUT
-            ["options"] = new JsonArray
+            Options = new[]
             {
-                new JsonObject
+                new ApplicationCommandOption("server", ApplicationCommandOptionType.SubCommandGroup)
                 {
-                    ["name"] = "server",
-                    ["description"] = "Commands for working with AzureBot servers",
-                    ["type"] = 2, // SUB_COMMAND_GROUP
-                    ["options"] = new JsonArray
+                    Description = "Commands for working with AzureBot servers",
+                    Options = new[]
                     {
-                        new JsonObject
+                        new ApplicationCommandOption("start", ApplicationCommandOptionType.SubCommand)
                         {
-                            ["name"] = "start",
-                            ["description"] = "Starts a server",
-                            ["type"] = 1, // SUB_COMMAND
-                            ["options"] = new JsonArray
+                            Description = "Starts a server",
+                            Options = new[]
                             {
-                                new JsonObject
+                                new ApplicationCommandOption("name", ApplicationCommandOptionType.String)
                                 {
-                                    ["name"] = "name",
-                                    ["description"] = "The name of the server",
-                                    ["type"] = 3, // STRING
-                                    ["required"] = true,
-                                },
-                            },
+                                    Description = "The name of the server",
+                                    Required = true,
+                                }
+                            }
                         },
-                        new JsonObject
+                        new ApplicationCommandOption("stop", ApplicationCommandOptionType.SubCommand)
                         {
-                            ["name"] = "stop",
-                            ["description"] = "Stops a server",
-                            ["type"] = 1, // SUB_COMMAND
-                            ["options"] = new JsonArray
+                            Description = "Stops a server",
+                            Options = new[]
                             {
-                                new JsonObject
+                                new ApplicationCommandOption("name", ApplicationCommandOptionType.String)
                                 {
-                                    ["name"] = "name",
-                                    ["description"] = "The name of the server",
-                                    ["type"] = 3, // STRING
-                                    ["required"] = true,
-                                },
-                            },
-                        },
-                    },
+                                    Description = "The name of the server",
+                                    Required = true,
+                                }
+                            }
+                        }
+                    }
                 },
-            },
-        },
+            }
+        }
     };
-    private readonly ILogger<UpdateCommand> _logger;
-    private readonly DiscordClient _discord;
 
-    public UpdateCommand(ILogger<UpdateCommand> logger, DiscordClient discord)
+    private readonly ILogger<UpdateCommand> _logger;
+    private readonly IServiceProvider _serviceProvider;
+
+    public UpdateCommand(ILogger<UpdateCommand> logger, IServiceProvider serviceProvider)
     {
         _logger = logger;
-        _discord = discord;
+        _serviceProvider = serviceProvider;
     }
 
     public async Task<int> InvokeAsync(InvocationContext context)
@@ -106,6 +88,9 @@ internal class UpdateCommand : ICommandHandler
         var instance = context.ParseResult.GetValueForOption(_instanceOption)!;
         var name = context.ParseResult.GetValueForOption(_commandNameOption)!;
         var guildName = context.ParseResult.GetValueForOption(_guildNameOption);
+
+        var auth = ActivatorUtilities.CreateInstance<DiscordAuthentication>(_serviceProvider, instance);
+        var discord = ActivatorUtilities.CreateInstance<DiscordClient>(_serviceProvider, auth);
 
         if (context.ParseResult.Errors.Any())
         {
@@ -117,7 +102,19 @@ internal class UpdateCommand : ICommandHandler
             return 1;
         }
 
-        await _discord.NewCommandAsync(instance.Discord, guildName, _commands[name].Deserialize<JsonElement>(), cancellationToken);
+        if (guildName is null)
+        {
+            await discord.NewCommandAsync(instance.Discord.ApplicationId, _appCommands[name], cancellationToken);
+        }
+        else
+        {
+            var guilds = instance.Discord.WellKnownGuilds;
+            if (guilds is null)
+            {
+                throw new ArgumentException("--guild-name can only be passed if the given instance has WellKnownGuilds set");
+            }
+            await discord.NewGuildCommandAsync(instance.Discord.ApplicationId, guilds[guildName], _appCommands[name], cancellationToken);
+        }
 
         return 0;
     }

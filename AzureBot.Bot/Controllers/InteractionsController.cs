@@ -78,7 +78,7 @@ public class InteractionsController : ControllerBase
     {
         return options.SingleOrDefault() switch
         {
-            { Name: "server", Type: ApplicationCommandOptionType.SubCommandGroup } server => HandleServerCommandAsync(interaction, server.Options, cancellationToken),
+            { Name: "server", Type: ApplicationCommandOptionType.SubCommandGroup, Options.Count: > 0 } server => HandleServerCommandAsync(interaction, server.Options, cancellationToken),
             var unknown => throw new Exception($"Unknown `/azurebot` subcommand {unknown?.Name}"),
         };
     }
@@ -87,8 +87,8 @@ public class InteractionsController : ControllerBase
     {
         return options.SingleOrDefault() switch
         {
-            { Name: "start", Type: ApplicationCommandOptionType.SubCommand } start => HandleServerControlCommandAsync(interaction, start.Options, VmControlAction.Start, cancellationToken),
-            { Name: "stop", Type: ApplicationCommandOptionType.SubCommand } stop => HandleServerControlCommandAsync(interaction, stop.Options, VmControlAction.Stop, cancellationToken),
+            { Name: "start", Type: ApplicationCommandOptionType.SubCommand, Options.Count: > 0 } start => HandleServerControlCommandAsync(interaction, start.Options, VmControlAction.Start, cancellationToken),
+            { Name: "stop", Type: ApplicationCommandOptionType.SubCommand, Options.Count: > 0 } stop => HandleServerControlCommandAsync(interaction, stop.Options, VmControlAction.Stop, cancellationToken),
             var unknown => throw new Exception($"Unknown `/azurebot server` subcommand {unknown?.Name}"),
         };
     }

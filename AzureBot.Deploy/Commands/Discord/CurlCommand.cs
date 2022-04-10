@@ -1,5 +1,6 @@
 ﻿using AzureBot.Deploy.Configuration;
 using AzureBot.Deploy.Services;
+using AzureBot.Discord;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
@@ -31,12 +32,12 @@ internal class CurlCommand : ICommandHandler
     }
 
     private readonly ILogger<CurlCommand> _logger;
-    private readonly DiscordClient _discord;
+    private readonly IServiceProvider _serviceProvider;
 
-    public CurlCommand(ILogger<CurlCommand> logger, DiscordClient discord)
+    public CurlCommand(ILogger<CurlCommand> logger, IServiceProvider serviceProvider)
     {
         _logger = logger;
-        _discord = discord;
+        _serviceProvider = serviceProvider;
     }
 
     public async Task<int> InvokeAsync(InvocationContext context)
@@ -45,6 +46,9 @@ internal class CurlCommand : ICommandHandler
         var instance = context.ParseResult.GetValueForOption(_instanceOption)!;
         var url = context.ParseResult.GetValueForArgument(_urlArgument)!;
         var method = context.ParseResult.GetValueForOption(_methodOption)!;
+
+        var auth = ActivatorUtilities.CreateInstance<DiscordAuthentication>(_serviceProvider, instance);
+        var discord = ActivatorUtilities.CreateInstance<DiscordClient>(_serviceProvider, auth);
 
         using var req = new HttpRequestMessage(new HttpMethod(method), url);
         if (method.Equals("GET", StringComparison.InvariantCultureIgnoreCase) && Console.IsInputRedirected)
@@ -62,7 +66,7 @@ internal class CurlCommand : ICommandHandler
             req.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
         }
 
-        using var res = await _discord.SendAsync(instance.Discord, req, cancellationToken);
+        using var res = await discord.SendAsync(req, cancellationToken);
 
         var fullResponse = new StringBuilder($"{(int)res.StatusCode} {res.ReasonPhrase}");
         fullResponse.AppendLine();

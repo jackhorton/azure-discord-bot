@@ -30,7 +30,6 @@ internal class Program
         services.AddSingleton<ArmDeployment>();
         services.AddSingleton<ILookupClient, LookupClient>();
         services.AddSingleton<AcmeCertificateGenerator>();
-        services.AddHttpClient<DiscordClient>();
         var serviceProvider = services.BuildServiceProvider();
 
         var root = new RootCommand("Deployment utilities for AzureBot")
