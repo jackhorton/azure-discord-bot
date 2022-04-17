@@ -15,7 +15,7 @@ using System.Threading.Tasks;
 
 namespace AzureBot.Deploy.Acme;
 
-internal class AcmeCertificateGenerator
+public class AcmeCertificateGenerator
 {
     private readonly ILogger<AcmeCertificateGenerator> _logger;
     private readonly TokenCredential _credential;

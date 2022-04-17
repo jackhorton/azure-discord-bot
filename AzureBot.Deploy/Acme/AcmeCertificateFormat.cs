@@ -1,6 +1,6 @@
 ﻿namespace AzureBot.Deploy.Acme;
 
-internal enum AcmeCertificateFormat
+public enum AcmeCertificateFormat
 {
     Pkcs12,
     Pem,

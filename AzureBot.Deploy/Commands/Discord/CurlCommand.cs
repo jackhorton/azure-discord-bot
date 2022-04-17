@@ -1,5 +1,5 @@
-﻿using AzureBot.Deploy.Configuration;
-using AzureBot.Deploy.Services;
+﻿using AzureBot.CommandLine;
+using AzureBot.Deploy.Configuration;
 using AzureBot.Discord;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -13,23 +13,12 @@ using System.Threading.Tasks;
 
 namespace AzureBot.Deploy.Commands.Discord;
 
-internal class CurlCommand : ICommandHandler
+[GeneratedCommand("curl", "Make an arbitrary request to discord's API as a bot")]
+public partial class CurlCommand : ICommandHandler
 {
     private static readonly Option<InstanceConfig> _instanceOption = new(new[] { "--instance", "-i" }, InstanceConfig.FromArgument, false, "The configuration file for the instance for this discord app") { IsRequired = true };
     private static readonly Option<string> _methodOption = new(new[] { "--method", "-X" }, () => "GET", "The HTTP method to use");
     private static readonly Argument<string> _urlArgument = new("url", "The API URL to make the request to");
-
-    public static Command GetCommand(IServiceProvider serviceProvider)
-    {
-        var command = new Command("curl", "Make an arbitrary request to discord's API as a bot")
-        {
-            _urlArgument,
-            _instanceOption,
-            _methodOption,
-        };
-        command.Handler = ActivatorUtilities.CreateInstance<CurlCommand>(serviceProvider);
-        return command;
-    }
 
     private readonly ILogger<CurlCommand> _logger;
     private readonly IServiceProvider _serviceProvider;
@@ -59,7 +48,7 @@ internal class CurlCommand : ICommandHandler
         {
             throw new Exception();
         }
-        
+
         if (Console.IsInputRedirected)
         {
             req.Content = new StreamContent(Console.OpenStandardInput());

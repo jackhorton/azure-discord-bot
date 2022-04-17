@@ -34,6 +34,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AzureBot.Discord\AzureBot.Discord.csproj" />
+    <ProjectReference Include="..\AzureBot.CommandLine.SourceGenerator\AzureBot.CommandLine.SourceGenerator.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
 </Project>

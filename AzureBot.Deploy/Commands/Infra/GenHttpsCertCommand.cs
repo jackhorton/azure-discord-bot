@@ -1,4 +1,5 @@
 ﻿using Azure.Core;
+using AzureBot.CommandLine;
 using AzureBot.Deploy.Acme;
 using AzureBot.Deploy.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -6,12 +7,12 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.CommandLine;
 using System.CommandLine.Invocation;
-using System.CommandLine.Parsing;
 using System.Threading.Tasks;
 
 namespace AzureBot.Deploy.Commands.Infra;
 
-internal class GenHttpsCertCommand : ICommandHandler
+[GeneratedCommand("gen-cert", "Creates or updates the ACME HTTPS certificate")]
+public partial class GenHttpsCertCommand : ICommandHandler
 {
     private static readonly Option<InstanceConfig> _instanceOption = new(
         new[] { "--instance", "-i" },
@@ -29,24 +30,6 @@ internal class GenHttpsCertCommand : ICommandHandler
 
     private readonly ILogger<GenHttpsCertCommand> _logger;
     private readonly AcmeCertificateGenerator _acmeCertificateGenerator;
-
-    public static Command GetCommand(IServiceProvider serviceProvider)
-    {
-        var command = new Command("gen-cert", "Creates or updates the ACME HTTPS certificate")
-        {
-            _instanceOption,
-            _domainOption,
-            _subdomainOption,
-            _emailOption,
-            _directoryOption,
-            _keyVaultUrlOption,
-            _resourceGroupIdOption,
-            _formatOption,
-            _sanOption,
-        };
-        command.Handler = ActivatorUtilities.CreateInstance<GenHttpsCertCommand>(serviceProvider);
-        return command;
-    }
 
     public GenHttpsCertCommand(ILogger<GenHttpsCertCommand> logger, AcmeCertificateGenerator acmeCertificateGenerator)
     {

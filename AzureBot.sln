@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureBot.Bot", "AzureBot.Bo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureBot.Discord", "AzureBot.Discord\AzureBot.Discord.csproj", "{478CDCCA-AB2D-443F-ABBA-7543422331AB}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureBot.CommandLine.SourceGenerator", "AzureBot.CommandLine.SourceGenerator\AzureBot.CommandLine.SourceGenerator.csproj", "{DBC91CEF-BB7A-4176-B698-1A3F9F0C2B58}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -61,6 +63,18 @@ Global
 		{478CDCCA-AB2D-443F-ABBA-7543422331AB}.Release|x64.Build.0 = Release|Any CPU
 		{478CDCCA-AB2D-443F-ABBA-7543422331AB}.Release|x86.ActiveCfg = Release|Any CPU
 		{478CDCCA-AB2D-443F-ABBA-7543422331AB}.Release|x86.Build.0 = Release|Any CPU
+		{DBC91CEF-BB7A-4176-B698-1A3F9F0C2B58}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DBC91CEF-BB7A-4176-B698-1A3F9F0C2B58}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DBC91CEF-BB7A-4176-B698-1A3F9F0C2B58}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{DBC91CEF-BB7A-4176-B698-1A3F9F0C2B58}.Debug|x64.Build.0 = Debug|Any CPU
+		{DBC91CEF-BB7A-4176-B698-1A3F9F0C2B58}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{DBC91CEF-BB7A-4176-B698-1A3F9F0C2B58}.Debug|x86.Build.0 = Debug|Any CPU
+		{DBC91CEF-BB7A-4176-B698-1A3F9F0C2B58}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DBC91CEF-BB7A-4176-B698-1A3F9F0C2B58}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DBC91CEF-BB7A-4176-B698-1A3F9F0C2B58}.Release|x64.ActiveCfg = Release|Any CPU
+		{DBC91CEF-BB7A-4176-B698-1A3F9F0C2B58}.Release|x64.Build.0 = Release|Any CPU
+		{DBC91CEF-BB7A-4176-B698-1A3F9F0C2B58}.Release|x86.ActiveCfg = Release|Any CPU
+		{DBC91CEF-BB7A-4176-B698-1A3F9F0C2B58}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

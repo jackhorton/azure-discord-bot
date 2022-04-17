@@ -1,4 +1,5 @@
-﻿using AzureBot.Deploy.Configuration;
+﻿using AzureBot.CommandLine;
+using AzureBot.Deploy.Configuration;
 using AzureBot.Discord;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -11,25 +12,14 @@ using System.Threading.Tasks;
 
 namespace AzureBot.Deploy.Commands.Discord;
 
-internal class UpdateCommand : ICommandHandler
+[GeneratedCommand("update", "Creates or updates a discord bot command")]
+public partial class UpdateCommand : ICommandHandler
 {
     private static readonly Option<InstanceConfig> _instanceOption = new(new[] { "--instance", "-i" }, InstanceConfig.FromArgument, false, "The configuration file for the instance you are deploying") { IsRequired = true };
     private static readonly Option<string> _commandNameOption = new(new[] { "--name", "-n" }, "The command to update") { IsRequired = true };
     private static readonly Option<string> _guildNameOption = new(
         new[] { "--guild-name", "-g" },
         "The name of the guild to register to. If omitted, the command will be registered globally. Must be one of the WellKnownGuilds in the instance configuration.");
-
-    public static Command GetCommand(IServiceProvider serviceProvider)
-    {
-        var command = new Command("update", "Creates or updates a discord bot command")
-        {
-            _instanceOption,
-            _commandNameOption,
-            _guildNameOption,
-        };
-        command.Handler = ActivatorUtilities.CreateInstance<UpdateCommand>(serviceProvider);
-        return command;
-    }
 
     private readonly Dictionary<string, ApplicationCommand> _appCommands = new()
     {

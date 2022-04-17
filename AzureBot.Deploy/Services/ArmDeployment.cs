@@ -7,13 +7,12 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.IO;
 using System.Reflection;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace AzureBot.Deploy.Services;
 
-internal class ArmDeployment
+public class ArmDeployment
 {
     private readonly TokenCredential _credential;
     private readonly ILogger<ArmDeployment> _logger;

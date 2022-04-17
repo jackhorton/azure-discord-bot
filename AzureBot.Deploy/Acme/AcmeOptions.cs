@@ -4,7 +4,7 @@ using System.Collections.Generic;
 
 namespace AzureBot.Deploy.Acme;
 
-internal record AcmeOptions(
+public record AcmeOptions(
     string ZoneName,
     string? Subdomain,
     string AccountEmail,

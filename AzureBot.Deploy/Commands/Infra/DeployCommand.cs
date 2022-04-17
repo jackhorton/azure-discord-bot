@@ -5,12 +5,12 @@ using Azure.ResourceManager.Resources;
 using Azure.Security.KeyVault.Secrets;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
+using AzureBot.CommandLine;
 using AzureBot.Deploy.Acme;
 using AzureBot.Deploy.Configuration;
 using AzureBot.Deploy.Services;
 using CliWrap;
 using CliWrap.Buffered;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -24,23 +24,13 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using Command = System.CommandLine.Command;
 
 namespace AzureBot.Deploy.Commands.Infra;
 
-internal class DeployCommand : ICommandHandler
+[GeneratedCommand("deploy", "Creates or updates the bot controller infrastructure")]
+public partial class DeployCommand : ICommandHandler
 {
     private static readonly Option<InstanceConfig> _instanceOption = new(new[] { "--instance", "-i" }, InstanceConfig.FromArgument, false, "The configuration file for the instance you are deploying") { IsRequired = true };
-
-    public static Command GetCommand(IServiceProvider serviceProvider)
-    {
-        var command = new Command("deploy", "Creates or updates the bot controller infrastructure")
-        {
-            _instanceOption,
-        };
-        command.Handler = ActivatorUtilities.CreateInstance<DeployCommand>(serviceProvider);
-        return command;
-    }
 
     private readonly ILogger<DeployCommand> _logger;
     private readonly ArmDeployment _armDeployment;
