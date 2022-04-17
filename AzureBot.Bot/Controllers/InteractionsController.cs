@@ -12,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
@@ -80,7 +81,7 @@ public class InteractionsController : ControllerBase
     {
         return options.SingleOrDefault() switch
         {
-            { Name: "server", Type: ApplicationCommandOptionType.SubCommandGroup, Options.Count: > 0 } server => HandleServerCommandAsync(interaction, server.Options, cancellationToken),
+            { Name: "server", Type: ApplicationCommandOptionType.SubCommandGroup, Options.Count: 1 } server => HandleServerCommandAsync(interaction, server.Options, cancellationToken),
             var unknown => throw new Exception($"Unknown `/azurebot` subcommand {unknown?.Name}"),
         };
     }
@@ -89,8 +90,8 @@ public class InteractionsController : ControllerBase
     {
         return options.SingleOrDefault() switch
         {
-            { Name: "start", Type: ApplicationCommandOptionType.SubCommand, Options.Count: > 0 } start => HandleServerControlCommandAsync(interaction, start.Options, VmControlAction.Start, cancellationToken),
-            { Name: "stop", Type: ApplicationCommandOptionType.SubCommand, Options.Count: > 0 } stop => HandleServerControlCommandAsync(interaction, stop.Options, VmControlAction.Stop, cancellationToken),
+            { Name: "start", Type: ApplicationCommandOptionType.SubCommand, Options.Count: 1 } start => HandleServerControlCommandAsync(interaction, start.Options, VmControlAction.Start, cancellationToken),
+            { Name: "stop", Type: ApplicationCommandOptionType.SubCommand, Options.Count: 1 } stop => HandleServerControlCommandAsync(interaction, stop.Options, VmControlAction.Stop, cancellationToken),
             var unknown => throw new Exception($"Unknown `/azurebot server` subcommand {unknown?.Name}"),
         };
     }
@@ -98,17 +99,18 @@ public class InteractionsController : ControllerBase
     private async Task<InteractionCallback> HandleServerControlCommandAsync(Interaction interaction, IReadOnlyCollection<ApplicationCommandOption> options, VmControlAction action, CancellationToken cancellationToken)
     {
         var name = options.Single((opt) => opt.Name == "name" && opt.Type == ApplicationCommandOptionType.String).Value;
-        var server = await _serversContainer.ReadItemAsync<GameServer>(interaction.GuildId, new PartitionKey(interaction.GuildId), cancellationToken: cancellationToken);
-        var queue = _queueService.GetQueueClient("control-vm");
-        await queue.SendMessageAsync(
-            JsonSerializer.Serialize(new
-            {
-                FollowupToken = interaction.Token,
-                VmName = name,
-                Action = action,
-                TraceParent = Activity.Current?.Id,
-            }),
-            cancellationToken);
+        try
+        {
+            var server = await _serversContainer.ReadItemAsync<GameServer>(
+                string.Join("|", name, interaction.GuildId),
+                new PartitionKey(interaction.GuildId),
+                cancellationToken: cancellationToken);
+            _logger.LogInformation("{action}ing server with resource ID {resourceId}", action, server.Resource.ResourceId);
+        }
+        catch (CosmosException ex) when (ex.StatusCode == HttpStatusCode.NotFound)
+        {
+            return InteractionCallback.Message($"Server {name} could not be found");
+        }
 
         return action switch
         {

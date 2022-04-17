@@ -106,7 +106,7 @@ public partial class DeployCommand : ICommandHandler
             await secretClient.SetSecretAsync(new KeyVaultSecret("bot-ssh-pub", publicKeyData), cancellationToken);
         }
 
-        var certUrl = await _acmeCertificateGenerator.GenerateHttpsCertificateAsync(
+        var certName = await _acmeCertificateGenerator.GenerateHttpsCertificateAsync(
             new AcmeOptions(instance.Domain, instance.ControllerName, instance.Https.Email, instance.Https.Directory, kvUrl, resourceGroupId, AcmeCertificateFormat.Pem, Array.Empty<string>()),
             cancellationToken);
 
@@ -136,7 +136,7 @@ public partial class DeployCommand : ICommandHandler
                 },
                 httpsCertUrl = new
                 {
-                    value = certUrl,
+                    value = $"https://{kvName}.vault.azure.net/secrets/{certName}",
                 },
                 keyVaultName = new
                 {

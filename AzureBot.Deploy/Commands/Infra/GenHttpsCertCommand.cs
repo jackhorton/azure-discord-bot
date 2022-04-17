@@ -71,7 +71,7 @@ public partial class GenHttpsCertCommand : ICommandHandler
         }
 
         var certUrl = await _acmeCertificateGenerator.GenerateHttpsCertificateAsync(options, cancellationToken);
-        _logger.LogInformation("Final certificate URL is {}", certUrl);
+        _logger.LogInformation("Final certificate name is {name}", certUrl);
 
         return 0;
     }

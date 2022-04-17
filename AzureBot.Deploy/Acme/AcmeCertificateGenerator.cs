@@ -32,7 +32,7 @@ public class AcmeCertificateGenerator
 
     private record DnsChallenge(IChallengeContext Challenge, string FullDnsName, string RecordName);
 
-    public async virtual Task<Uri> GenerateHttpsCertificateAsync(
+    public async virtual Task<string> GenerateHttpsCertificateAsync(
         AcmeOptions options,
         CancellationToken cancellationToken)
     {
@@ -45,7 +45,7 @@ public class AcmeCertificateGenerator
             if (cert.Value.Properties.ExpiresOn > DateTimeOffset.UtcNow.AddDays(30) && (cert.Value.Properties.Enabled ?? false))
             {
                 _logger.LogInformation("Existing valid HTTPS certificate has been found with thumbprint {}", thumbprint);
-                return cert.Value.SecretId;
+                return cert.Value.Name;
             }
 
             _logger.LogWarning("HTTPS certificate {} is expiring soon, automatically generating a new one", thumbprint);
@@ -180,7 +180,7 @@ public class AcmeCertificateGenerator
             var merged = await certs.MergeCertificateAsync(
                 new MergeCertificateOptions(certName, new[] { chain.ToPfx(key).Build(orderIdentifier, "") }),
                 cancellationToken);
-            return merged.Value.SecretId;
+            return merged.Value.Name;
         }
         catch
         {
