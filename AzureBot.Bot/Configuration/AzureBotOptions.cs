@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace AzureBot.Bot.Configuration;
 
@@ -15,4 +15,7 @@ public record AzureBotOptions
 
     [Required]
     public string CosmosUrl { get; init; } = default!;
+
+    [Required]
+    public string AppPublicKey { get; init; } = default!;
 }

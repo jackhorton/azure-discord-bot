@@ -1,13 +1,18 @@
-﻿using Azure.Core;
+using Azure.Core;
 using Azure.Identity;
 using AzureBot.Deploy.Acme;
 using AzureBot.Deploy.Commands.Discord;
 using AzureBot.Deploy.Commands.Infra;
 using AzureBot.Deploy.Services;
+using AzureBot.Discord;
 using DnsClient;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
 using System.CommandLine;
+using System.IO;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace AzureBot.Deploy;
@@ -28,8 +33,16 @@ internal class Program
         });
         services.AddSingleton(_credentials);
         services.AddSingleton<ArmDeployment>();
+        services.AddHttpClient<DiscordClient>();
         services.AddSingleton<ILookupClient, LookupClient>();
         services.AddSingleton<AcmeCertificateGenerator>();
+        services.AddSingleton((sp) =>
+        {
+            var options = new JsonSerializerOptions();
+            options.Converters.Add(new JsonStringEnumConverter());
+            return JsonSerializer.Deserialize<Dictionary<string, ApplicationCommand>>(
+                File.ReadAllText("commands.json"), options)!;
+        });
         var serviceProvider = services.BuildServiceProvider();
 
         var root = new RootCommand("Deployment utilities for AzureBot")

@@ -1,20 +1,20 @@
-﻿{
-    "SubscriptionId": "35dca76c-bba7-43de-a4a2-b3144f88d5ba",
-    "ResourceGroupName": "azurebot-pwus2",
-    "Location": "westus2",
-    "AdminObjectId": "4106cfcf-426d-4828-915b-a512cc3349aa",
-    "Domain": "groupmeme.xyz",
-    "ControllerName": "azurebot-pwus2",
-    "Discord": {
-        "ApplicationId": "815335811721592872",
-        "BotTokenVault": "https://azurebot-prod-shared-kv.vault.azure.net/",
-        "BotTokenSecretName": "bot-token",
-        "WellKnownGuilds": {
-            "logicord": "811034138306936862"
-        }
-    },
-    "Https": {
-        "Email": "jackpeterhorton@gmail.com",
-        "Directory": "https://acme-v02.api.letsencrypt.org/directory"
+{
+  "SubscriptionId": "35dca76c-bba7-43de-a4a2-b3144f88d5ba",
+  "ResourceGroupName": "azurebot-pwus2",
+  "Location": "westus2",
+  "AdminObjectId": "4106cfcf-426d-4828-915b-a512cc3349aa",
+  "Domain": "groupmeme.xyz",
+  "ControllerName": "azurebot-pwus2",
+  "Discord": {
+    "ApplicationId": "815335811721592872",
+    "BotTokenVault": "https://azurebot-prod-shared-kv.vault.azure.net/",
+    "BotTokenSecretName": "bot-token",
+    "WellKnownGuilds": {
+      "logicord": "811034138306936862"
     }
+  },
+  "Https": {
+    "Email": "jackpeterhorton@gmail.com",
+    "Directory": "https://acme-v02.api.letsencrypt.org/directory"
+  }
 }

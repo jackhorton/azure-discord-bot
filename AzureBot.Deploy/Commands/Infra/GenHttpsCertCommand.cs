@@ -2,7 +2,6 @@
 using AzureBot.CommandLine;
 using AzureBot.Deploy.Acme;
 using AzureBot.Deploy.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.CommandLine;

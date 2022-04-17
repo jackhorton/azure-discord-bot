@@ -1,4 +1,4 @@
-﻿using AzureBot.CommandLine;
+using AzureBot.CommandLine;
 using AzureBot.Deploy.Configuration;
 using AzureBot.Discord;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,61 +15,22 @@ namespace AzureBot.Deploy.Commands.Discord;
 [GeneratedCommand("update", "Creates or updates a discord bot command")]
 public partial class UpdateCommand : ICommandHandler
 {
-    private static readonly Option<InstanceConfig> _instanceOption = new(new[] { "--instance", "-i" }, InstanceConfig.FromArgument, false, "The configuration file for the instance you are deploying") { IsRequired = true };
+    private static readonly Option<InstanceConfig> _instanceOption =
+        new(new[] { "--instance", "-i" }, InstanceConfig.FromArgument, false, "The configuration file for the instance you are deploying") { IsRequired = true };
     private static readonly Option<string> _commandNameOption = new(new[] { "--name", "-n" }, "The command to update") { IsRequired = true };
     private static readonly Option<string> _guildNameOption = new(
         new[] { "--guild-name", "-g" },
         "The name of the guild to register to. If omitted, the command will be registered globally. Must be one of the WellKnownGuilds in the instance configuration.");
 
-    private readonly Dictionary<string, ApplicationCommand> _appCommands = new()
-    {
-        ["hello-world"] = new("hello-world", "A basic command"),
-        ["azurebot"] = new("azurebot", "Commands for working with AzureBot")
-        {
-            Options = new[]
-            {
-                new ApplicationCommandOption("server", ApplicationCommandOptionType.SubCommandGroup)
-                {
-                    Description = "Commands for working with AzureBot servers",
-                    Options = new[]
-                    {
-                        new ApplicationCommandOption("start", ApplicationCommandOptionType.SubCommand)
-                        {
-                            Description = "Starts a server",
-                            Options = new[]
-                            {
-                                new ApplicationCommandOption("name", ApplicationCommandOptionType.String)
-                                {
-                                    Description = "The name of the server",
-                                    Required = true,
-                                }
-                            }
-                        },
-                        new ApplicationCommandOption("stop", ApplicationCommandOptionType.SubCommand)
-                        {
-                            Description = "Stops a server",
-                            Options = new[]
-                            {
-                                new ApplicationCommandOption("name", ApplicationCommandOptionType.String)
-                                {
-                                    Description = "The name of the server",
-                                    Required = true,
-                                }
-                            }
-                        }
-                    }
-                },
-            }
-        }
-    };
-
     private readonly ILogger<UpdateCommand> _logger;
     private readonly IServiceProvider _serviceProvider;
+    private readonly Dictionary<string, ApplicationCommand> _appCommands;
 
-    public UpdateCommand(ILogger<UpdateCommand> logger, IServiceProvider serviceProvider)
+    public UpdateCommand(ILogger<UpdateCommand> logger, IServiceProvider serviceProvider, Dictionary<string, ApplicationCommand> appCommands)
     {
         _logger = logger;
         _serviceProvider = serviceProvider;
+        _appCommands = appCommands;
     }
 
     public async Task<int> InvokeAsync(InvocationContext context)

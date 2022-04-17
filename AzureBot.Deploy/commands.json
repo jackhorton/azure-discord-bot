@@ -1,0 +1,45 @@
+{
+  "hello-world": {
+    "name": "hello-world",
+    "description": "A basic command"
+  },
+  "azurebot": {
+    "name": "azurebot",
+    "description": "Commands for working with AzureBot",
+    "options": [
+      {
+        "type": "SubCommandGroup",
+        "name": "server",
+        "description": "Commands for working with AzureBot servers",
+        "options": [
+          {
+            "type": "SubCommand",
+            "name": "start",
+            "description": "Starts a server",
+            "options": [
+              {
+                "type": "String",
+                "name": "name",
+                "description": "The name of the server to start",
+                "required": true
+              }
+            ]
+          },
+          {
+            "type": "SubCommand",
+            "name": "stop",
+            "description": "Stops a server",
+            "options": [
+              {
+                "type": "String",
+                "name": "name",
+                "description": "The name of the server to stop",
+                "required": true
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

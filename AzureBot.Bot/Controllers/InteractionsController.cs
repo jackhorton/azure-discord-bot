@@ -1,10 +1,12 @@
-﻿using Azure.Storage.Queues;
+using Azure.Storage.Queues;
+using AzureBot.Bot.Configuration;
 using AzureBot.Bot.Cosmos;
 using AzureBot.Bot.Queues;
 using AzureBot.Discord;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NSec.Cryptography;
 using System;
 using System.Collections.Generic;
@@ -27,14 +29,14 @@ public class InteractionsController : ControllerBase
     private readonly Container _serversContainer;
     private readonly PublicKey _verificationPublicKey;
 
-    public InteractionsController(ILogger<InteractionsController> logger, QueueServiceClient queueService, CosmosClient cosmosClient)
+    public InteractionsController(ILogger<InteractionsController> logger, QueueServiceClient queueService, CosmosClient cosmosClient, IOptionsSnapshot<AzureBotOptions> options)
     {
         _logger = logger;
         _queueService = queueService;
         _serversContainer = cosmosClient.GetContainer("botdb", "servers");
         _verificationPublicKey = PublicKey.Import(
             _verificationAlgorithm,
-            Convert.FromHexString("265c24669b077eb4b2c5778a04f903025626224d50ae7da2d6537d35bd022651"),
+            Convert.FromHexString(options.Value.AppPublicKey),
             KeyBlobFormat.RawPublicKey);
     }
 

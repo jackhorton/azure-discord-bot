@@ -1,4 +1,4 @@
-﻿using AzureBot.CommandLine;
+using AzureBot.CommandLine;
 using AzureBot.Deploy.Configuration;
 using AzureBot.Discord;
 using Microsoft.Extensions.DependencyInjection;
@@ -6,9 +6,11 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.CommandLine;
 using System.CommandLine.Invocation;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace AzureBot.Deploy.Commands.Discord;
@@ -64,7 +66,12 @@ public partial class CurlCommand : ICommandHandler
             fullResponse.AppendLine($"{header.Key}: {string.Join(' ', header.Value)}");
         }
         fullResponse.AppendLine();
-        fullResponse.AppendLine(await res.Content.ReadAsStringAsync(cancellationToken));
+
+        if (res.StatusCode != HttpStatusCode.NoContent)
+        {
+            var body = await res.Content.ReadAsStringAsync(cancellationToken);
+            fullResponse.AppendLine(JsonSerializer.Serialize(JsonSerializer.Deserialize<JsonElement>(body), new JsonSerializerOptions { WriteIndented = true }));
+        }
 
         Console.Error.WriteLine("{0}", fullResponse);
 

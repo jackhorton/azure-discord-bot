@@ -16,8 +16,9 @@ using System;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllers();
-builder.Services.AddOpenTelemetryTracing((tracing) =>
+var services = builder.Services;
+services.AddControllers();
+services.AddOpenTelemetryTracing((tracing) =>
 {
     tracing.AddAspNetCoreInstrumentation();
     tracing.AddHttpClientInstrumentation();
@@ -26,8 +27,8 @@ builder.Services.AddOpenTelemetryTracing((tracing) =>
         exporter.ConnectionString = builder.Configuration["AzureMonitor:ConnectionString"];
     });
 });
-builder.Services.Configure<AzureBotOptions>(builder.Configuration.GetSection("AzureBot"));
-builder.Services.AddSingleton<TokenCredential>((sp) =>
+services.Configure<AzureBotOptions>(builder.Configuration.GetSection("AzureBot"));
+services.AddSingleton<TokenCredential>((sp) =>
 {
     var appOptions = sp.GetRequiredService<IOptionsMonitor<AzureBotOptions>>().CurrentValue;
     var credentialOptions = new DefaultAzureCredentialOptions
@@ -40,19 +41,19 @@ builder.Services.AddSingleton<TokenCredential>((sp) =>
     };
     return new DefaultAzureCredential(credentialOptions);
 });
-builder.Services.AddSingleton<QueueServiceClient>((sp) =>
+services.AddSingleton<QueueServiceClient>((sp) =>
 {
     var appOptions = sp.GetRequiredService<IOptionsMonitor<AzureBotOptions>>().CurrentValue;
     var credentials = sp.GetRequiredService<TokenCredential>();
     return new QueueServiceClient(new Uri(appOptions.QueueUrl), credentials);
 });
-builder.Services.AddSingleton<CosmosClient>((sp) =>
+services.AddSingleton<CosmosClient>((sp) =>
 {
     var appOptions = sp.GetRequiredService<IOptionsMonitor<AzureBotOptions>>().CurrentValue;
     var credentials = sp.GetRequiredService<TokenCredential>();
     return new CosmosClient(appOptions.CosmosUrl, credentials);
 });
-builder.Services.AddSingleton<ActivityManager>();
+services.AddSingleton<ActivityManager>();
 
 var app = builder.Build();
 

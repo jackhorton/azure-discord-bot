@@ -1,4 +1,6 @@
-﻿namespace AzureBot.Discord;
+using System.Text.Json.Serialization;
+
+namespace AzureBot.Discord;
 
 public enum ApplicationCommandOptionType
 {

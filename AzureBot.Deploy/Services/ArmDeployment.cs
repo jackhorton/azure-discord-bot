@@ -40,7 +40,7 @@ public class ArmDeployment
         };
 
         _logger.LogInformation("Beginning deployment of {}.json", templateName);
-        var deploymentOperation = await rgClient.GetArmDeployments().CreateOrUpdateAsync(WaitUntil.Completed, templateName, new ArmDeploymentInput(props), cancellationToken: cancellationToken);
+        var deploymentOperation = await rgClient.GetArmDeployments().CreateOrUpdateAsync(WaitUntil.Completed, templateName, new ArmDeploymentContent(props), cancellationToken);
         var deployment = await deploymentOperation.WaitForCompletionAsync(cancellationToken);
 
         var result = deployment.Value.Data.Properties;
