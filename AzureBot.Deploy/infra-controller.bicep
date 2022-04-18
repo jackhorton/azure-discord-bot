@@ -49,6 +49,10 @@ resource syslogDcr 'Microsoft.Insights/dataCollectionRules@2021-04-01' existing 
   name: 'bot-syslog-dcr'
 }
 
+resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2021-03-15' existing = {
+  name: 'azurebot-cosmos${uniqueString(resourceGroup().id, subscription().id)}'
+}
+
 resource nic 'Microsoft.Network/networkInterfaces@2020-06-01' = {
   name: '${vmName}-nic'
   location: location
@@ -189,7 +193,7 @@ resource installBotExtension 'Microsoft.Compute/virtualMachines/extensions@2019-
     ]
     protectedSettings: {
       fileUris: botBackendExtensionFiles
-      commandToExecute: './install-bot-backend.sh "${keyVaultName}" "${appInsights.properties.ConnectionString}" "${vmManagedIdentity.properties.clientId}" "${subscription().tenantId}" "${storage.properties.primaryEndpoints.queue}"'
+      commandToExecute: './install-bot-backend.sh "${keyVaultName}" "${appInsights.properties.ConnectionString}" "${vmManagedIdentity.properties.clientId}" "${subscription().tenantId}" "${storage.properties.primaryEndpoints.queue}" "${cosmosAccount.properties.documentEndpoint}"'
       managedIdentity: {
         clientId: vmManagedIdentity.properties.clientId
       }
@@ -216,7 +220,6 @@ resource httpsExtension 'Microsoft.Compute/virtualMachines/extensions@2021-07-01
         observedCertificates: [
           httpsCertUrl
         ]
-        certificateStoreLocation: '/var/www'
       }
       authenticationSettings: {
         msiClientId: vmManagedIdentity.properties.clientId
