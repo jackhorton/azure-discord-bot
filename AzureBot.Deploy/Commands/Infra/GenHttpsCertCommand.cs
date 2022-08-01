@@ -23,7 +23,7 @@ public partial class GenHttpsCertCommand : ICommandHandler
     private static readonly Option<string> _emailOption = new(new[] { "--email", "-e" }, "The email to associate with the ACME account. Must not use with --instance.");
     private static readonly Option<Uri> _directoryOption = new(new[] { "--directory", "-D" }, "The issuing ACME directory. Must not use with --instance.");
     private static readonly Option<Uri> _keyVaultUrlOption = new(new[] { "--key-vault-url", "-k" }, "The key vault URL for storing the certificate and account key. Must not use with --instance.");
-    private static readonly Option<ResourceIdentifier> _resourceGroupIdOption = new(new[] { "--resource-group", "-g" }, "The resource group containing the Azure DNS zone. Must not use with --instance.");
+    private static readonly Option<string> _resourceGroupIdOption = new(new[] { "--resource-group", "-g" }, "The resource group containing the Azure DNS zone. Must not use with --instance.");
     private static readonly Option<AcmeCertificateFormat?> _formatOption = new(new[] { "--format", "-f" }, "The format to store the certificate in. One of 'pkcs12' or 'pem'");
     private static readonly Option<string[]> _sanOption = new(new[] { "--alternate-name", "--san", "-S" }, "Alternate names to register the certificate for") { Arity = ArgumentArity.ZeroOrMore };
 
@@ -65,7 +65,7 @@ public partial class GenHttpsCertCommand : ICommandHandler
                 context.ParseResult.GetValueForOption(_emailOption) ?? throw new Exception(),
                 context.ParseResult.GetValueForOption(_directoryOption) ?? new Uri("https://acme-v02.api.letsencrypt.org/directory"),
                 context.ParseResult.GetValueForOption(_keyVaultUrlOption) ?? throw new Exception(),
-                context.ParseResult.GetValueForOption(_resourceGroupIdOption) ?? throw new Exception(),
+                new ResourceIdentifier(context.ParseResult.GetValueForOption(_resourceGroupIdOption) ?? throw new Exception()),
                 context.ParseResult.GetValueForOption(_formatOption) ?? throw new Exception(),
                 context.ParseResult.GetValueForOption(_sanOption) ?? Array.Empty<string>());
         }

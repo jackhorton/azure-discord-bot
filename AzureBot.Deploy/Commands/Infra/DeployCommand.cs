@@ -1,4 +1,4 @@
-﻿using Azure;
+using Azure;
 using Azure.Core;
 using Azure.ResourceManager;
 using Azure.ResourceManager.Resources;
@@ -64,16 +64,10 @@ public partial class DeployCommand : ICommandHandler
 
         var baseDeployment = await _armDeployment.DeployLocalTemplateAsync(
             "infra-base",
-            new
+            new Dictionary<string, object?>
             {
-                adminObjectId = new
-                {
-                    value = instance.AdminObjectId,
-                },
-                dnsZoneName = new
-                {
-                    value = instance.Domain,
-                },
+                ["adminObjectId"] = instance.AdminObjectId,
+                ["dnsZoneName"] = instance.Domain,
             },
             resourceGroupId,
             cancellationToken);
@@ -82,7 +76,7 @@ public partial class DeployCommand : ICommandHandler
 
         var fileUrls = await GetExtensionFilesAsync(baseOutputs, publishDirectory, cancellationToken).ToArrayAsync(cancellationToken);
 
-        var kvName = baseOutputs.GetProperty("keyVaultName").GetProperty("value").GetString();
+        var kvName = baseOutputs.GetProperty("keyVaultName").GetProperty("value").GetString() ?? throw new Exception("Expected non-null 'keyVaultName' output property");
         var kvUrl = new Uri($"https://{kvName}.vault.azure.net");
         var secretClient = new SecretClient(kvUrl, _credential);
 
@@ -112,36 +106,15 @@ public partial class DeployCommand : ICommandHandler
 
         await _armDeployment.DeployLocalTemplateAsync(
             "infra-controller",
-            new
+            new Dictionary<string, object?>
             {
-                storageAccountName = new
-                {
-                    value = baseOutputs.GetProperty("storageAccountName").GetProperty("value").GetString(),
-                },
-                dnsZoneName = new
-                {
-                    value = instance.Domain,
-                },
-                botBackendExtensionFiles = new
-                {
-                    value = fileUrls,
-                },
-                sshPublicKeyData = new
-                {
-                    value = publicKeyData,
-                },
-                vmName = new
-                {
-                    value = instance.ControllerName,
-                },
-                httpsCertUrl = new
-                {
-                    value = $"https://{kvName}.vault.azure.net/secrets/{certName}",
-                },
-                keyVaultName = new
-                {
-                    value = kvName
-                }
+                ["storageAccountName"] = baseOutputs.GetProperty("storageAccountName").GetProperty("value").GetString() ?? throw new Exception("Expected non-null 'storageAccountName' output property"),
+                ["dnsZoneName"] = instance.Domain,
+                ["botBackendExtensionFiles"] = fileUrls,
+                ["sshPublicKeyData"] = publicKeyData,
+                ["vmName"] = instance.ControllerName,
+                ["httpsCertUrl"] = $"https://{kvName}.vault.azure.net/secrets/{certName}",
+                ["keyVaultName"] = kvName,
             },
             resourceGroupId,
             cancellationToken);

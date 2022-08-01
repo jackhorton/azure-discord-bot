@@ -37,6 +37,37 @@
                 "required": true
               }
             ]
+          },
+          {
+            "type": "SubCommand",
+            "name": "create",
+            "description": "Creates a new server",
+            "options": [
+              {
+                "type": "String",
+                "name": "name",
+                "description": "The name of the new server",
+                "required": true
+              },
+              {
+                "type": "String",
+                "name": "sku",
+                "description": "The azure SKU of the server",
+                "choices": [
+                  "Standard_D2ads_v5",
+                  "Standard_D4ads_v5",
+                  "Standard_D8ads_v5",
+                  "Standard_E2ads_v5",
+                  "Standard_E4ads_v5"
+                ]
+              },
+              {
+                "type": "String",
+                "name": "game",
+                "description": "The game to initialize on the server",
+                "required": true
+              }
+            ]
           }
         ]
       }

@@ -1,4 +1,4 @@
-﻿using Azure;
+using Azure;
 using Azure.Core;
 using Azure.Security.KeyVault.Certificates;
 using Azure.Security.KeyVault.Secrets;
@@ -103,28 +103,16 @@ public class AcmeCertificateGenerator
 
         await _armDeployment.DeployLocalTemplateAsync(
             "acme-challenge",
-            new
+            new Dictionary<string, object?>
             {
-                keyVaultName = new
+                ["keyVaultName"] = options.KeyVaultUrl.Host.Split('.').First(),
+                ["accountKey"] = acme.AccountKey.ToPem(),
+                ["dnsZoneName"] = options.ZoneName,
+                ["challenges"] = dnsChallenges.Select((challenge) => new Dictionary<string, string>
                 {
-                    value = options.KeyVaultUrl.Host.Split('.').First(),
-                },
-                accountKey = new
-                {
-                    value = acme.AccountKey.ToPem(),
-                },
-                dnsZoneName = new
-                {
-                    value = options.ZoneName,
-                },
-                challenges = new
-                {
-                    value = dnsChallenges.Select((challenge) => new Dictionary<string, string>
-                    {
-                        ["name"] = challenge.RecordName,
-                        ["text"] = acme.AccountKey.DnsTxt(challenge.Challenge.Token),
-                    }),
-                }
+                    ["name"] = challenge.RecordName,
+                    ["text"] = acme.AccountKey.DnsTxt(challenge.Challenge.Token),
+                })
             },
             options.ResourceGroupId,
             cancellationToken);

@@ -279,6 +279,14 @@ resource vnet 'Microsoft.Network/virtualNetworks@2020-06-01' = {
           privateLinkServiceNetworkPolicies: 'Enabled'
         }
       }
+      {
+        name: imageBuilderSubnetName
+        properties: {
+          addressPrefix: '10.1.1.0/24'
+          privateEndpointNetworkPolicies: 'Enabled'
+          privateLinkServiceNetworkPolicies: 'Disabled'
+        }
+      }
     ]
   }
 }
@@ -345,6 +353,56 @@ resource dnsZone 'Microsoft.Network/dnsZones@2018-05-01' = {
   location: 'global'
 }
 
+var imageBuilderSubnetName = 'azurebot-imagebuilder-subnet'
+
+resource gallery 'Microsoft.Compute/galleries@2021-10-01' = {
+  name: 'azurebotvmsig'
+  location: location
+  properties: {
+    description: 'Gallery for game server VM images'
+  }
+}
+
+resource valheimImage 'Microsoft.Compute/galleries/images@2021-10-01' = {
+  parent: gallery
+  name: 'valheim-ws2019'
+  location: location
+  properties: {
+    description: 'A Windows Server 2019 image containing Valheim'
+    osType: 'Windows'
+    osState: 'Generalized'
+    architecture: 'x64'
+    identifier: {
+      publisher: 'AzureBot'
+      offer: 'Valheim'
+      sku: 'Valheim-WS2019'
+    }
+  }
+}
+
+resource minecraftImage 'Microsoft.Compute/galleries/images@2021-10-01' = {
+  parent: gallery
+  name: 'minecraft-1.18'
+  location: location
+  properties: {
+    description: 'An Ubuntu Server 20.04 image containing Minecraft'
+    osType: 'Linux'
+    osState: 'Generalized'
+    architecture: 'x64'
+    identifier: {
+      publisher: 'AzureBot'
+      offer: 'Minecraft-1.18'
+      sku: 'Minecraft-1.18-Ubuntu2004'
+    }
+  }
+}
+
+resource packerIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2018-11-30' = {
+  name: 'packer-identity'
+  location: location
+}
+
 output keyVaultName string = keyVault.name
 output storageAccountName string = storage.name
 output deployContainerUrl string = '${storage.properties.primaryEndpoints.blob}${deployContainer.name}'
+output packerIdentityId string = packerIdentity.id

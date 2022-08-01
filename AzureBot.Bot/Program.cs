@@ -41,13 +41,13 @@ services.AddSingleton<TokenCredential>((sp) =>
     };
     return new DefaultAzureCredential(credentialOptions);
 });
-services.AddSingleton<QueueServiceClient>((sp) =>
+services.AddSingleton((sp) =>
 {
     var appOptions = sp.GetRequiredService<IOptionsMonitor<AzureBotOptions>>().CurrentValue;
     var credentials = sp.GetRequiredService<TokenCredential>();
     return new QueueServiceClient(new Uri(appOptions.QueueUrl), credentials);
 });
-services.AddSingleton<CosmosClient>((sp) =>
+services.AddSingleton((sp) =>
 {
     var appOptions = sp.GetRequiredService<IOptionsMonitor<AzureBotOptions>>().CurrentValue;
     var credentials = sp.GetRequiredService<TokenCredential>();

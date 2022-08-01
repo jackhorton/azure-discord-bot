@@ -41,7 +41,7 @@ internal class Program
             var options = new JsonSerializerOptions();
             options.Converters.Add(new JsonStringEnumConverter());
             return JsonSerializer.Deserialize<Dictionary<string, ApplicationCommand>>(
-                File.ReadAllText("commands.json"), options)!;
+                File.ReadAllText("Content/Discord/commands.json"), options)!;
         });
         var serviceProvider = services.BuildServiceProvider();
 
