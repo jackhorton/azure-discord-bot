@@ -1,18 +1,33 @@
 # Roadmap
 
-## v1 - basic functionality
-`/azurebot server list`
+## v1 - Basic functionality
 
-`/azurebot server start <name> <timespan>`
+```sh
+# List all servers, both online and offline
+/azurebot server list
 
-`/azurebot server stop <name>`
+# Create a new server for the given game. A server is analogous to a save file. This implicitly starts the server as well.
+/azurebot server new $NAME $GAME $REGION $SKU $TIMESPAN
 
-## v2 - custom server images with steamcmd
-`/azurebot server new <name> <game> <region> <allowed-role>`
+# Starts the given server for the given duration, after which the server will turn off automatically.
+/azurebot server start $NAME $TIMESPAN
+```
 
-`/azurebot server delete <name>`
+## v2 - More control options
 
-`/azurebot server info <name>`
+```sh
+# Explicitly stop a server before the original $TIMESPAN is up
+/azurebot server stop $NAME
+
+# Add $TIMESPAN to the existing server lifetime
+/azurebot server extend $NAME $TIMESPAN
+
+# Dumps information about the server, including when it will expire
+/azurebot server info $NAME
+
+# Deletes a given server's resources
+/azurebot server delete $NAME
+```
 
 ## v3 - permissions
 `/azurebot server edit <name> <option-key> <option-value>` (different servers allow changing different config options)

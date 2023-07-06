@@ -1,6 +1,6 @@
 using Azure.Core;
 using Azure.Identity;
-using Azure.Monitor.OpenTelemetry.Exporter;
+using Azure.Monitor.OpenTelemetry.AspNetCore;
 using Azure.Storage.Queues;
 using AzureBot.Bot.Configuration;
 using AzureBot.Bot.Telemetry;
@@ -10,37 +10,32 @@ using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-using OpenTelemetry.Trace;
 using System;
 
 var builder = WebApplication.CreateBuilder(args);
 
+TokenCredential credential;
+if (builder.Environment.IsProduction())
+{
+    credential = new ManagedIdentityCredential();
+}
+else
+{
+    credential = new DefaultAzureCredential();
+}
+
 // Add services to the container.
 var services = builder.Services;
-services.AddControllers();
-services.AddOpenTelemetryTracing((tracing) =>
-{
-    tracing.AddAspNetCoreInstrumentation();
-    tracing.AddHttpClientInstrumentation();
-    tracing.AddAzureMonitorTraceExporter((exporter) =>
-    {
-        exporter.ConnectionString = builder.Configuration["AzureMonitor:ConnectionString"];
-    });
-});
+
 services.Configure<AzureBotOptions>(builder.Configuration.GetSection("AzureBot"));
-services.AddSingleton<TokenCredential>((sp) =>
-{
-    var appOptions = sp.GetRequiredService<IOptionsMonitor<AzureBotOptions>>().CurrentValue;
-    var credentialOptions = new DefaultAzureCredentialOptions
+services.AddControllers();
+services
+    .AddOpenTelemetry()
+    .UseAzureMonitor((options) =>
     {
-        ManagedIdentityClientId = appOptions.ClientId,
-        ExcludeInteractiveBrowserCredential = true,
-        ExcludeSharedTokenCacheCredential = true,
-        VisualStudioCodeTenantId = appOptions.TenantId,
-        VisualStudioTenantId = appOptions.TenantId,
-    };
-    return new DefaultAzureCredential(credentialOptions);
-});
+        options.Credential = credential;
+    });
+services.AddSingleton(credential);
 services.AddSingleton((sp) =>
 {
     var appOptions = sp.GetRequiredService<IOptionsMonitor<AzureBotOptions>>().CurrentValue;
